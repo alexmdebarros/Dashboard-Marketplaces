@@ -22,7 +22,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Título principal e subtítulo
+# Título e subtítulo
 st.markdown(
     "<h1 style='margin-bottom:0.1rem;'>📊 Recebimentos de Marketplaces</h1>"
     "<h3 style='margin-top:0;'>Visualize e gerencie suas receitas</h3>",
@@ -80,29 +80,23 @@ def load_data():
 
 df = load_data()
 
-# --- 5) CSS para KPI cards coloridos e lado a lado ---
+# --- 5) CSS para KPI cards coloridos ---
 st.markdown("""
 <style>
-.kpi-container {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  margin: 1.5rem 0;
-}
 .kpi-card {
-  flex: 1;
-  background: #ffffff;
+  background: #fff;
   border-radius: 8px;
   padding: 1rem;
   box-shadow: 0 2px 6px rgba(0,0,0,0.1);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   text-align: center;
+  width: 100%;
 }
 .kpi-card:hover {
   transform: translateY(-4px);
   box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
-.kpi-label { font-size: 0.85rem; color: #555; margin-bottom: 0.4rem; }
+.kpi-label { font-size: 0.9rem; color: #555; margin-bottom: 0.4rem; }
 .kpi-value { font-size: 1.6rem; font-weight: 600; color: #111; }
 /* contornos coloridos */
 .kpi-total  { border: 2px solid #1E90FF !important; }
@@ -144,32 +138,45 @@ if conta_sel:
 if baixado_sel:
     df_f = df_f[df_f["Baixado por"].isin(baixado_sel)]
 
-# --- 8) Exibe os KPI cards ---
+# --- 8) Exibe os KPI cards lado a lado ---
 total, count = df_f["Valor_raw"].sum(), len(df_f)
 ticket = total / count if count else 0.0
 
-st.markdown("<div class='kpi-container'>", unsafe_allow_html=True)
-for lbl, val, cls in [
-    ("Total Recebido", total,  "kpi-total"),
-    ("Lançamentos",    count,  "kpi-count"),
-    ("Ticket Médio",   ticket, "kpi-ticket"),
-]:
-    txt = f"{val}" if lbl=="Lançamentos" else f"R$ {val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    st.markdown(f"""
-      <div class='kpi-card {cls}'>
-        <div class='kpi-label'>{lbl}</div>
-        <div class='kpi-value'>{txt}</div>
-      </div>
-    """, unsafe_allow_html=True)
-st.markdown("</div>", unsafe_allow_html=True)
+col1, col2, col3 = st.columns(3, gap="large")
+with col1:
+    txt = f"R$ {total:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    st.markdown(
+        f"<div class='kpi-card kpi-total'>"
+        f"<div class='kpi-label'>Total Recebido</div>"
+        f"<div class='kpi-value'>{txt}</div>"
+        f"</div>",
+        unsafe_allow_html=True
+    )
+with col2:
+    st.markdown(
+        f"<div class='kpi-card kpi-count'>"
+        f"<div class='kpi-label'>Lançamentos</div>"
+        f"<div class='kpi-value'>{count}</div>"
+        f"</div>",
+        unsafe_allow_html=True
+    )
+with col3:
+    txt = f"R$ {ticket:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    st.markdown(
+        f"<div class='kpi-card kpi-ticket'>"
+        f"<div class='kpi-label'>Ticket Médio</div>"
+        f"<div class='kpi-value'>{txt}</div>"
+        f"</div>",
+        unsafe_allow_html=True
+    )
 
 # --- 9) Prepara e exibe a tabela com AgGrid ---
 df_t = df_f.copy()
 df_t["Data"]          = df_t["Data_str"]
 df_t["Data da Baixa"] = df_t["DataBaixa_str"]
 df_t = df_t[[
-    "Data","Marketplace","Valor","Banco / Conta",
-    "Baixado por","Data da Baixa"
+    "Data", "Marketplace", "Valor",
+    "Banco / Conta", "Baixado por", "Data da Baixa"
 ]].reset_index().rename(columns={"index":"_orig_index"})
 
 gb = GridOptionsBuilder.from_dataframe(df_t)
