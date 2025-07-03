@@ -88,7 +88,7 @@ with st.sidebar:
     conta_sel = st.multiselect("Banco / Conta", sorted(df["Banco / Conta"].unique()))
     by_sel    = st.multiselect("Baixado por",   sorted(df["Baixado por"].unique()))
 
-# ─── 6) Aplica filtros ────────────────────────────────────────────────────────
+# ─── 6) Aplica filtros ───────────────────────────────────────────────────────
 df_f = df[(df["Data"].dt.date >= start) & (df["Data"].dt.date <= end)]
 if status == "Baixados":
     df_f = df_f[df_f["Baixado por"] != ""]
@@ -110,14 +110,15 @@ c1.metric("💰 Total Recebido", f"R$ {total:,.2f}")
 c2.metric("📝 Lançamentos",    f"{count}")
 c3.metric("🎯 Ticket Médio",    f"R$ {ticket:,.2f}")
 
-# ─── 8) Prepara tabela editável ─────────────────────────────────────────────
-df_t = df_f.reset_index().rename(columns={"index":"_orig_index"})
+# ─── 8) Prepara tabela editável + botão Salvar condicional ──────────────────
+df_t = df_f.reset_index().rename(columns={"index": "_orig_index"})
 df_t["row_number"]     = df_t["_orig_index"] + 2
 df_t["Data"]           = df_t["Data_str"]
 df_t["Data da Baixa"]  = df_t["DataBaixa_str"]
+
 grid_df = df_t[[
-    "row_number","Data","Marketplace","Valor",
-    "Banco / Conta","Baixado por","Data da Baixa"
+    "row_number", "Data", "Marketplace", "Valor",
+    "Banco / Conta", "Baixado por", "Data da Baixa"
 ]]
 
 gb = GridOptionsBuilder.from_dataframe(grid_df)
@@ -126,28 +127,37 @@ gb.configure_column("Baixado por", editable=True)
 gb.configure_column("row_number", hide=True)
 grid_opts = gb.build()
 
-grid_resp = AgGrid(
-    grid_df,
-    gridOptions=grid_opts,
-    update_mode=GridUpdateMode.VALUE_CHANGED,
-    fit_columns_on_grid_load=True,
-    height=400,
-    width="100%",
-    theme="streamlit",
-)
+col1, col2 = st.columns([8, 1], gap="small")
+with col1:
+    grid_resp = AgGrid(
+        grid_df,
+        gridOptions=grid_opts,
+        update_mode=GridUpdateMode.MODEL_CHANGED,
+        fit_columns_on_grid_load=True,
+        height=400,
+        width="100%",
+        theme="streamlit",
+    )
 
-# ─── 9) Botão Salvar alterações ─────────────────────────────────────────────
-if st.button("💾 Salvar alterações"):
-    updated = pd.DataFrame(grid_resp["data"])
-    for _, row in updated.iterrows():
-        rn = int(row["row_number"])
-        new_usr  = row["Baixado por"] or ""
-        orig_usr = df.loc[rn-2, "Baixado por"]
-        if new_usr != orig_usr:
-            ws.update_cell(rn, col_idx_by, new_usr)
-            if new_usr:
-                ws.update_cell(rn, col_idx_dt, datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
-            else:
-                ws.update_cell(rn, col_idx_dt, "")
-    st.success("Alterações salvas com sucesso!")
-    st.experimental_rerun()
+edited = grid_resp.get("edited_rows", [])
+
+with col2:
+    if edited:
+        if st.button("💾 Salvar alterações"):
+            updated = pd.DataFrame(grid_resp["data"])
+            for _, row in updated.iterrows():
+                rn       = int(row["row_number"])
+                new_usr  = row["Baixado por"].strip()
+                orig_usr = df.loc[rn-2, "Baixado por"]
+                if new_usr != orig_usr:
+                    ws.update_cell(rn, col_idx_by, new_usr)
+                    if new_usr:
+                        ws.update_cell(
+                            rn,
+                            col_idx_dt,
+                            datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+                        )
+                    else:
+                        ws.update_cell(rn, col_idx_dt, "")
+            st.success("Alterações salvas com sucesso!")
+            st.experimental_rerun()
