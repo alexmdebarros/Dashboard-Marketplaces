@@ -4,6 +4,7 @@ import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
+from streamlit.runtime.scriptrunner import RerunException  # <— usado para forçar rerun
 
 # ─── 0) Injeta locale flatpickr pt-BR ─────────────────────────────────────────
 st.markdown(
@@ -116,13 +117,12 @@ df_t["row_number"]     = df_t["_orig_index"] + 2
 df_t["Data"]           = df_t["Data_str"]
 df_t["Data da Baixa"]  = df_t["DataBaixa_str"]
 
-# DataFrame que vamos exibir no AgGrid
 grid_df = df_t[[
     "row_number", "Data", "Marketplace", "Valor",
     "Banco / Conta", "Baixado por", "Data da Baixa"
 ]].copy()
 
-# Prepara AgGrid
+# montagem do AgGrid
 gb = GridOptionsBuilder.from_dataframe(grid_df)
 gb.configure_default_column(resizable=True, wrapText=True, autoHeight=True)
 gb.configure_column("Baixado por", editable=True)
@@ -141,54 +141,46 @@ with col1:
         theme="streamlit",
     )
 
-# Converte o resultado do AgGrid em DataFrame
-updated_df = pd.DataFrame(grid_resp["data"])
-# Garantimos tipos corretos
-updated_df["row_number"]   = updated_df["row_number"].astype(int)
-updated_df["Baixado por"]  = (
-    updated_df["Baixado por"]
-    .fillna("")
-    .astype(str)
-    .str.strip()
+# converte em DataFrame para comparação
+updated_df = (
+    pd.DataFrame(grid_resp["data"])
+      .assign(
+         row_number=lambda d: d["row_number"].astype(int),
+         Baixado_por=lambda d: d["Baixado por"].fillna("").astype(str).str.strip()
+      )
 )
 
-# Prepara o DataFrame original para comparação
-orig_df = grid_df.copy()
-orig_df["row_number"]      = orig_df["row_number"].astype(int)
-orig_df["Baixado por"]     = (
-    orig_df["Baixado por"]
-    .fillna("")
-    .astype(str)
-    .str.strip()
+orig_df = (
+    grid_df
+      .rename(columns={"Baixado por": "orig"})
+      .assign(
+         row_number=lambda d: d["row_number"].astype(int),
+         orig=lambda d: d["orig"].fillna("").astype(str).str.strip()
+      )
 )
 
-# Junta ambos e detecta quais linhas mudaram
-merged = pd.merge(
-    orig_df[["row_number", "Baixado por"]],
-    updated_df[["row_number", "Baixado por"]],
-    on="row_number",
-    suffixes=("_orig", "_new")
+# detecta linhas alteradas
+merged = orig_df[["row_number", "orig"]].merge(
+    updated_df[["row_number", "Baixado_por"]],
+    on="row_number"
 )
-mask_changed = merged["Baixado por_orig"] != merged["Baixado por_new"]
-edited = mask_changed.any()
+mask = merged["orig"] != merged["Baixado_por"]
+edited = mask.any()
 
 with col2:
     if edited:
         if st.button("💾 Salvar alterações"):
-            # Para cada linha que mudou, atualiza no Sheets
-            for _, row in merged[mask_changed].iterrows():
+            # limpa cache para forçar reload na próxima execução
+            load_data.clear()
+            # atualiza somente as linhas que mudaram
+            for _, row in merged[mask].iterrows():
                 rn      = int(row["row_number"])
-                new_usr = row["Baixado por_new"]
-                # Atualiza "Baixado por"
+                new_usr = row["Baixado_por"]
                 ws.update_cell(rn, col_idx_by, new_usr)
-                # Se preencheu, grava timestamp; se limpou, apaga
                 if new_usr:
-                    ws.update_cell(
-                        rn,
-                        col_idx_dt,
-                        datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-                    )
+                    ws.update_cell(rn, col_idx_dt, datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
                 else:
                     ws.update_cell(rn, col_idx_dt, "")
             st.success("Alterações salvas com sucesso!")
-            st.experimental_rerun()
+            # força a segunda execução do script, agora já sem cache
+            raise RerunException()
