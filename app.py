@@ -3,81 +3,42 @@ import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
-from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
-from streamlit.runtime.scriptrunner import RerunException  # <— usado para forçar rerun
 
-# ─── 0) Injeta locale flatpickr pt-BR ─────────────────────────────────────────
-st.markdown(
-    """
-    <script>document.documentElement.lang = 'pt-BR';</script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
-    <script>
-      if (window.flatpickr) {
-        window.flatpickr.localize(window.flatpickr.l10ns.pt);
-      }
-    </script>
-    """,
-    unsafe_allow_html=True,
-)
-
-# ─── 1) Configurações da página ────────────────────────────────────────────────
-st.set_page_config(
-    page_title="Recebimentos de Marketplaces",
-    layout="wide",
-)
-
-# ─── 2) Cabeçalho ─────────────────────────────────────────────────────────────
-st.markdown(
-    "<h1>📊 Recebimentos de Marketplaces</h1>"
-    "<h3 style='margin-top:0;'>Visualize e gerencie suas receitas</h3>",
-    unsafe_allow_html=True
-)
-
-# ─── 3) Conexão com Google Sheets ────────────────────────────────────────────
+# ─── Conexão com Google Sheets ───────────────────────────────────────────────
 SHEET_KEY = "19UwqUZlIZJ_kZVf1hTZw1_Nds2nYnu6Hx8igOQVsDfk"
-SCOPES = [
-    "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive",
-]
-creds = Credentials.from_service_account_info(
-    st.secrets["google_service_account"], scopes=SCOPES
-)
-gc = gspread.authorize(creds)
-ws = gc.open_by_key(SHEET_KEY).worksheet("Dados")
-header = ws.row_values(1)
-col_idx_dt = header.index("Data da Baixa") + 1
-col_idx_by = header.index("Baixado por") + 1
+SCOPES = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
+creds = Credentials.from_service_account_info(st.secrets["google_service_account"], scopes=SCOPES)
+gc    = gspread.authorize(creds)
+ws    = gc.open_by_key(SHEET_KEY).worksheet("Dados")
 
-# ─── 4) Carrega e trata dados ─────────────────────────────────────────────────
+# índices das colunas
+header      = ws.row_values(1)
+IDX_BY      = header.index("Baixado por")   + 1
+IDX_DT      = header.index("Data da Baixa") + 1
+
+# ─── Carrega e transforma ─────────────────────────────────────────────────────
 @st.cache_data
 def load_data():
     raw = pd.DataFrame(ws.get_all_values()[1:], columns=ws.get_all_values()[0])
     df = pd.DataFrame({
         "Data":          pd.to_datetime(raw["Data"], dayfirst=True, errors="coerce"),
         "Marketplace":   raw["Marketplace"],
-        "Valor_raw":     raw["Valor"]
-                             .str.replace(".", "", regex=False)
-                             .str.replace(",", ".", regex=False)
-                             .astype(float),
+        "Valor_raw":     raw["Valor"].str.replace(".", "", regex=False)
+                                   .str.replace(",", ".", regex=False).astype(float),
         "Banco / Conta": raw["Banco / Conta"],
         "Data da Baixa": pd.to_datetime(raw["Data da Baixa"], dayfirst=True, errors="coerce"),
         "Baixado por":   raw["Baixado por"].fillna(""),
     })
     df["Valor"] = df["Valor_raw"].map(
-        lambda x: f"R$ {x:,.2f}"
-                  .replace(",", "X")
-                  .replace(".", ",")
-                  .replace("X", ".")
+        lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     )
     df["Data_str"]      = df["Data"].dt.strftime("%d/%m/%Y")
-    df["DataBaixa_str"] = df["Data da Baixa"]\
-                              .dt.strftime("%d/%m/%Y %H:%M:%S")\
-                              .fillna("")
+    df["DataBaixa_str"] = df["Data da Baixa"].dt.strftime("%d/%m/%Y %H:%M:%S").fillna("")
     return df
 
 df = load_data()
 
-# ─── 5) Filtros na sidebar ────────────────────────────────────────────────────
+# ─── Filtros ─────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.header("Filtros")
     mn    = df["Data"].min().date()
@@ -89,7 +50,6 @@ with st.sidebar:
     conta_sel = st.multiselect("Banco / Conta", sorted(df["Banco / Conta"].unique()))
     by_sel    = st.multiselect("Baixado por",   sorted(df["Baixado por"].unique()))
 
-# ─── 6) Aplica filtros ───────────────────────────────────────────────────────
 df_f = df[(df["Data"].dt.date >= start) & (df["Data"].dt.date <= end)]
 if status == "Baixados":
     df_f = df_f[df_f["Baixado por"] != ""]
@@ -102,7 +62,7 @@ if conta_sel:
 if by_sel:
     df_f = df_f[df_f["Baixado por"].isin(by_sel)]
 
-# ─── 7) Exibe KPIs ───────────────────────────────────────────────────────────
+# ─── KPIs ────────────────────────────────────────────────────────────────────
 total  = df_f["Valor_raw"].sum()
 count  = len(df_f)
 ticket = total / count if count else 0.0
@@ -111,76 +71,45 @@ c1.metric("💰 Total Recebido", f"R$ {total:,.2f}")
 c2.metric("📝 Lançamentos",    f"{count}")
 c3.metric("🎯 Ticket Médio",    f"R$ {ticket:,.2f}")
 
-# ─── 8) Prepara tabela editável + botão Salvar condicional ──────────────────
-df_t = df_f.reset_index().rename(columns={"index": "_orig_index"})
-df_t["row_number"]     = df_t["_orig_index"] + 2
-df_t["Data"]           = df_t["Data_str"]
-df_t["Data da Baixa"]  = df_t["DataBaixa_str"]
+# ─── Prepara tabela para edição ──────────────────────────────────────────────
+# mantemos o índice original p/ referenciar a linha no Sheets
+df_edit = df_f.reset_index().rename(columns={"index":"_orig_index"})
+df_edit["row_number"]    = df_edit["_orig_index"] + 2
+df_edit["Data"]          = df_edit["Data_str"]
+df_edit["Data da Baixa"] = df_edit["DataBaixa_str"]
 
-grid_df = df_t[[
-    "row_number", "Data", "Marketplace", "Valor",
-    "Banco / Conta", "Baixado por", "Data da Baixa"
-]].copy()
+# só as colunas que queremos mostrar/editar
+display_df = df_edit[[
+    "row_number","Data","Marketplace","Valor",
+    "Banco / Conta","Baixado por","Data da Baixa"
+]].set_index("row_number", drop=False)
 
-# montagem do AgGrid
-gb = GridOptionsBuilder.from_dataframe(grid_df)
-gb.configure_default_column(resizable=True, wrapText=True, autoHeight=True)
-gb.configure_column("Baixado por", editable=True)
-gb.configure_column("row_number", hide=True)
-grid_opts = gb.build()
-
-col1, col2 = st.columns([8, 1], gap="small")
-with col1:
-    grid_resp = AgGrid(
-        grid_df,
-        gridOptions=grid_opts,
-        update_mode=GridUpdateMode.VALUE_CHANGED,
-        fit_columns_on_grid_load=True,
-        height=400,
-        width="100%",
-        theme="streamlit",
-    )
-
-# converte em DataFrame para comparação
-updated_df = (
-    pd.DataFrame(grid_resp["data"])
-      .assign(
-         row_number=lambda d: d["row_number"].astype(int),
-         Baixado_por=lambda d: d["Baixado por"].fillna("").astype(str).str.strip()
-      )
+# ─── Experimental Data Editor ────────────────────────────────────────────────
+edited = st.experimental_data_editor(
+    display_df,
+    num_rows="fixed",
+    use_container_width=True
 )
 
-orig_df = (
-    grid_df
-      .rename(columns={"Baixado por": "orig"})
-      .assign(
-         row_number=lambda d: d["row_number"].astype(int),
-         orig=lambda d: d["orig"].fillna("").astype(str).str.strip()
-      )
-)
+# ─── Detecta mudanças em “Baixado por” ────────────────────────────────────────
+mask = edited["Baixado por"] != display_df["Baixado por"]
+if mask.any():
+    if st.button("💾 Salvar alterações"):
+        # prepara batch de Cells
+        cells = []
+        now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        for rn in edited.index[mask]:
+            new_usr = str(edited.at[rn, "Baixado por"]).strip()
+            # célula do “Baixado por”
+            cells.append(gspread.Cell(rn, IDX_BY, new_usr))
+            # célula do timestamp
+            ts = now if new_usr else ""
+            cells.append(gspread.Cell(rn, IDX_DT, ts))
 
-# detecta linhas alteradas
-merged = orig_df[["row_number", "orig"]].merge(
-    updated_df[["row_number", "Baixado_por"]],
-    on="row_number"
-)
-mask = merged["orig"] != merged["Baixado_por"]
-edited = mask.any()
+        # UM único request ao Sheets
+        ws.update_cells(cells)
 
-with col2:
-    if edited:
-        if st.button("💾 Salvar alterações"):
-            # limpa cache para forçar reload na próxima execução
-            load_data.clear()
-            # atualiza somente as linhas que mudaram
-            for _, row in merged[mask].iterrows():
-                rn      = int(row["row_number"])
-                new_usr = row["Baixado_por"]
-                ws.update_cell(rn, col_idx_by, new_usr)
-                if new_usr:
-                    ws.update_cell(rn, col_idx_dt, datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
-                else:
-                    ws.update_cell(rn, col_idx_dt, "")
-            st.success("Alterações salvas com sucesso!")
-            # força a segunda execução do script, agora já sem cache
-            raise RerunException()
+        st.success("Alterações salvas com sucesso!")
+        # limpa cache e recarrega
+        load_data.clear()
+        st.experimental_rerun()
