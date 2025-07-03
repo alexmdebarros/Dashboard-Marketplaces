@@ -116,17 +116,13 @@ df_t["row_number"]     = df_t["_orig_index"] + 2
 df_t["Data"]           = df_t["Data_str"]
 df_t["Data da Baixa"]  = df_t["DataBaixa_str"]
 
+# DataFrame que vamos exibir no AgGrid
 grid_df = df_t[[
     "row_number", "Data", "Marketplace", "Valor",
     "Banco / Conta", "Baixado por", "Data da Baixa"
-]]
+]].copy()
 
-# Construímos um mapa original garantindo string
-orig_map = {
-    int(row["row_number"]): str(row.get("Baixado por") or "").strip()
-    for row in grid_df.to_dict(orient="records")
-}
-
+# Prepara AgGrid
 gb = GridOptionsBuilder.from_dataframe(grid_df)
 gb.configure_default_column(resizable=True, wrapText=True, autoHeight=True)
 gb.configure_column("Baixado por", editable=True)
@@ -145,29 +141,54 @@ with col1:
         theme="streamlit",
     )
 
-# Reconstruímos o mapa atual também convertendo sempre para string
-curr_map = {
-    int(row["row_number"]): str(row.get("Baixado por") or "").strip()
-    for row in grid_resp["data"]
-}
+# Converte o resultado do AgGrid em DataFrame
+updated_df = pd.DataFrame(grid_resp["data"])
+# Garantimos tipos corretos
+updated_df["row_number"]   = updated_df["row_number"].astype(int)
+updated_df["Baixado por"]  = (
+    updated_df["Baixado por"]
+    .fillna("")
+    .astype(str)
+    .str.strip()
+)
 
-# Se qualquer valor mudou, mostramos o botão
-edited = any(curr_map[rn] != orig_map.get(rn, "") for rn in curr_map)
+# Prepara o DataFrame original para comparação
+orig_df = grid_df.copy()
+orig_df["row_number"]      = orig_df["row_number"].astype(int)
+orig_df["Baixado por"]     = (
+    orig_df["Baixado por"]
+    .fillna("")
+    .astype(str)
+    .str.strip()
+)
+
+# Junta ambos e detecta quais linhas mudaram
+merged = pd.merge(
+    orig_df[["row_number", "Baixado por"]],
+    updated_df[["row_number", "Baixado por"]],
+    on="row_number",
+    suffixes=("_orig", "_new")
+)
+mask_changed = merged["Baixado por_orig"] != merged["Baixado por_new"]
+edited = mask_changed.any()
 
 with col2:
     if edited:
         if st.button("💾 Salvar alterações"):
-            for rn, new_usr in curr_map.items():
-                old_usr = orig_map.get(rn, "")
-                if new_usr != old_usr:
-                    ws.update_cell(rn, col_idx_by, new_usr)
-                    if new_usr:
-                        ws.update_cell(
-                            rn,
-                            col_idx_dt,
-                            datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-                        )
-                    else:
-                        ws.update_cell(rn, col_idx_dt, "")
+            # Para cada linha que mudou, atualiza no Sheets
+            for _, row in merged[mask_changed].iterrows():
+                rn      = int(row["row_number"])
+                new_usr = row["Baixado por_new"]
+                # Atualiza "Baixado por"
+                ws.update_cell(rn, col_idx_by, new_usr)
+                # Se preencheu, grava timestamp; se limpou, apaga
+                if new_usr:
+                    ws.update_cell(
+                        rn,
+                        col_idx_dt,
+                        datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+                    )
+                else:
+                    ws.update_cell(rn, col_idx_dt, "")
             st.success("Alterações salvas com sucesso!")
             st.experimental_rerun()
