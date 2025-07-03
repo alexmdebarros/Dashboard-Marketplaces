@@ -3,9 +3,10 @@ import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
-from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode, DataReturnMode, GridSelectionMode
+from st_aggrid import AgGrid, GridOptionsBuilder
+from st_aggrid.shared import GridUpdateMode, DataReturnMode, GridSelectionMode
 
-# ─── 0) Injeta locale flatpickr pt-BR ─────────────────────────────────────────
+# 0) Injeta locale flatpickr pt-BR
 st.markdown(
     """
     <script>document.documentElement.lang = 'pt-BR';</script>
@@ -19,21 +20,21 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ─── 1) Configuração da página ────────────────────────────────────────────────
+# 1) Configuração da página
 st.set_page_config(
     page_title="Recebimentos de Marketplaces",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# ─── 2) Cabeçalho ─────────────────────────────────────────────────────────────
+# 2) Cabeçalho
 st.markdown(
     "<h1>📊 Recebimentos de Marketplaces</h1>"
     "<h3 style='margin-top:0;'>Visualize e gerencie suas receitas</h3>",
     unsafe_allow_html=True
 )
 
-# ─── 3) Conexão com Google Sheets ────────────────────────────────────────────
+# 3) Conexão com Google Sheets
 SHEET_KEY = "19UwqUZlIZJ_kZVf1hTZw1_Nds2nYnu6Hx8igOQVsDfk"
 SCOPES    = ["https://www.googleapis.com/auth/spreadsheets",
              "https://www.googleapis.com/auth/drive"]
@@ -44,7 +45,7 @@ header    = ws.row_values(1)
 col_idx_dt = header.index("Data da Baixa") + 1
 col_idx_by = header.index("Baixado por")   + 1
 
-# ─── 4) Função para ler e tratar dados ────────────────────────────────────────
+# 4) Função para ler e tratar dados
 @st.cache_data
 def load_data():
     all_vals = ws.get_all_values()
@@ -66,7 +67,7 @@ def load_data():
 
 df = load_data()
 
-# ─── 5) Filtros na sidebar ────────────────────────────────────────────────────
+# 5) Filtros na sidebar
 with st.sidebar:
     st.header("Filtros")
     mn = df["Data"].min().date()
@@ -78,7 +79,7 @@ with st.sidebar:
     conta_sel = st.multiselect("Banco / Conta", sorted(df["Banco / Conta"].unique()))
     by_sel = st.multiselect("Baixado por", sorted(df["Baixado por"].unique()))
 
-# ─── 6) Aplica filtros ────────────────────────────────────────────────────────
+# 6) Aplica filtros
 df_f = df[(df["Data"].dt.date >= start) & (df["Data"].dt.date <= end)]
 if status == "Baixados":
     df_f = df_f[df_f["Baixado por"] != ""]
@@ -91,7 +92,7 @@ if conta_sel:
 if by_sel:
     df_f = df_f[df_f["Baixado por"].isin(by_sel)]
 
-# ─── 7) Exibe KPIs lado a lado ───────────────────────────────────────────────
+# 7) Exibe KPIs lado a lado
 total  = df_f["Valor_raw"].sum()
 count  = len(df_f)
 ticket = total / count if count else 0.0
@@ -100,7 +101,7 @@ c1.metric("💰 Total Recebido", f"R$ {total:,.2f}")
 c2.metric("📝 Lançamentos",    f"{count}")
 c3.metric("🎯 Ticket Médio",    f"R$ {ticket:,.2f}")
 
-# ─── 8) Tabela com seleção ───────────────────────────────────────────────────
+# 8) Tabela com seleção
 df_t = df_f.reset_index().rename(columns={"index":"_orig_index"})
 df_t["row_number"] = df_t["_orig_index"] + 2
 df_t["Data"]          = df_t["Data_str"]
@@ -127,7 +128,7 @@ grid_resp = AgGrid(
     theme="streamlit"
 )
 
-# ─── 9) Formulário de edição ─────────────────────────────────────────────────
+# 9) Formulário de edição
 selected = grid_resp["selected_rows"]
 if selected:
     sel = selected[0]
