@@ -39,11 +39,11 @@ SCOPES    = ["https://www.googleapis.com/auth/spreadsheets",
 creds     = Credentials.from_service_account_info(
     st.secrets["google_service_account"], scopes=SCOPES
 )
-gc     = gspread.authorize(creds)
-ws     = gc.open_by_key(SHEET_KEY).worksheet("Dados")
-header = ws.row_values(1)
-idx_dt = header.index("Data da Baixa") + 1
-idx_by = header.index("Baixado por")   + 1
+gc       = gspread.authorize(creds)
+ws       = gc.open_by_key(SHEET_KEY).worksheet("Dados")
+header   = ws.row_values(1)
+idx_dt   = header.index("Data da Baixa") + 1
+idx_by   = header.index("Baixado por")   + 1
 
 # ─── 3) Parser de Valor e carga de dados ─────────────────────────────────────
 def parse_val(v):
@@ -74,7 +74,8 @@ def load_data():
         "Baixado por":   df_raw["Baixado por"].fillna(""),
     })
     df["Valor"] = df["Valor_raw"].map(
-        lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+        lambda x: f"R$ {x:,.2f}"
+                  .replace(",", "X").replace(".", ",").replace("X", ".")
     )
     df["Data_str"]      = df["Data"].dt.strftime("%d/%m/%Y")
     df["DataBaixa_str"] = df["Data da Baixa"]\
@@ -89,19 +90,15 @@ st.markdown("""
 <style>
 .kpi-card {
   background: #fff; border-radius: 8px; padding: 1rem;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.1);
-  transition: transform 0.2s, box-shadow 0.2s;
-  text-align: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.1); transition: .2s;
+  text-align: center; width:100%;
 }
-.kpi-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-}
-.kpi-label { font-size: 0.9rem; color: #555; margin-bottom: 0.4rem; }
-.kpi-value { font-size: 1.6rem; font-weight: 600; color: #111; }
-.kpi-total  { border: 2px solid #1E90FF !important; }
-.kpi-count  { border: 2px solid #2ECC71 !important; }
-.kpi-ticket { border: 2px solid #9B59B6 !important; }
+.kpi-card:hover { transform:translateY(-4px); box-shadow:0 4px 12px rgba(0,0,0,0.15); }
+.kpi-label { font-size:0.9rem; color:#555; margin-bottom:0.4rem; }
+.kpi-value { font-size:1.6rem; font-weight:600; color:#111; }
+.kpi-total  { border:2px solid #1E90FF !important; }
+.kpi-count  { border:2px solid #2ECC71 !important; }
+.kpi-ticket { border:2px solid #9B59B6 !important; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -114,7 +111,7 @@ with st.sidebar:
         dt0 = st.date_input("Início", mn, min_value=mn, max_value=mx, format="DD/MM/YYYY")
         dt1 = st.date_input("Fim",    mx, min_value=mn, max_value=mx, format="DD/MM/YYYY")
     with st.expander("🔍 Status de Baixa", expanded=True):
-        status = st.radio("Status", ["Todos","Baixados","Pendentes"])
+        status = st.radio("Status", ["Todos", "Baixados", "Pendentes"])
     with st.expander("🛒 Marketplaces"):
         mp_sel = st.multiselect("Selecione", sorted(df["Marketplace"].unique()))
     with st.expander("🏦 Contas"):
@@ -142,21 +139,24 @@ tick     = tot / cnt if cnt else 0.0
 col1, col2, col3 = st.columns(3, gap="large")
 with col1:
     disp = f"R$ {tot:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    st.markdown(f"<div class='kpi-card kpi-total'>"
-                f"<div class='kpi-label'>Total Recebido</div>"
-                f"<div class='kpi-value'>{disp}</div></div>",
-                unsafe_allow_html=True)
+    st.markdown(
+        f"<div class='kpi-card kpi-total'><div class='kpi-label'>Total Recebido</div>"
+        f"<div class='kpi-value'>{disp}</div></div>",
+        unsafe_allow_html=True
+    )
 with col2:
-    st.markdown(f"<div class='kpi-card kpi-count'>"
-                f"<div class='kpi-label'>Lançamentos</div>"
-                f"<div class='kpi-value'>{cnt}</div></div>",
-                unsafe_allow_html=True)
+    st.markdown(
+        f"<div class='kpi-card kpi-count'><div class='kpi-label'>Lançamentos</div>"
+        f"<div class='kpi-value'>{cnt}</div></div>",
+        unsafe_allow_html=True
+    )
 with col3:
     disp = f"R$ {tick:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    st.markdown(f"<div class='kpi-card kpi-ticket'>"
-                f"<div class='kpi-label'>Ticket Médio</div>"
-                f"<div class='kpi-value'>{disp}</div></div>",
-                unsafe_allow_html=True)
+    st.markdown(
+        f"<div class='kpi-card kpi-ticket'><div class='kpi-label'>Ticket Médio</div>"
+        f"<div class='kpi-value'>{disp}</div></div>",
+        unsafe_allow_html=True
+    )
 
 # ─── 8) Prepara DataFrame para AgGrid com row_number ────────────────────────
 df_t = df_f.reset_index().rename(columns={"index":"_orig_index"})
@@ -164,8 +164,8 @@ df_t["row_number"] = df_t["_orig_index"] + 2
 df_t["Data"]          = df_t["Data_str"]
 df_t["Data da Baixa"] = df_t["DataBaixa_str"]
 df_t = df_t[[
-    "row_number","Data","Marketplace","Valor",
-    "Banco / Conta","Baixado por","Data da Baixa"
+    "row_number", "Data", "Marketplace", "Valor",
+    "Banco / Conta", "Baixado por", "Data da Baixa"
 ]]
 
 gb = GridOptionsBuilder.from_dataframe(df_t)
@@ -179,12 +179,18 @@ grid = AgGrid(
     height=600, fit_columns_on_grid_load=True, width="100%", theme="streamlit"
 )
 
-# ─── 9) Auto‐save usando row_number ───────────────────────────────────────────
-for r in grid["data"]:
-    rn = int(r["row_number"])
-    new_usr = ("" if pd.isna(r.get("Baixado por")) else str(r["Baixado por"]).strip())
-    # busca valor antigo direto do sheet via cache df
-    orig_usr = df.loc[rn-2, "Baixado por"]
+# ─── 9) Auto‐save usando row_number corrigido ─────────────────────────────────
+for row in grid["data"]:
+    raw_rn = row.get("row_number")
+    try:
+        rn = int(float(raw_rn))
+    except (TypeError, ValueError):
+        continue
+
+    raw_usr = row.get("Baixado por")
+    new_usr = "" if pd.isna(raw_usr) or raw_usr is None else str(raw_usr).strip()
+    orig_usr = df.loc[rn - 2, "Baixado por"]
+
     if new_usr != orig_usr:
         ws.update_cell(rn, idx_by, new_usr)
         if new_usr:
