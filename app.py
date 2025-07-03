@@ -4,61 +4,63 @@ import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
+import locale
 
-# 0) Injeta script para definir idioma como pt-BR e evitar prompt de tradução
+# 0) Força locale pt_BR para que o calendário use meses em português
+try:
+    locale.setlocale(locale.LC_TIME, "pt_BR.UTF-8")
+except locale.Error:
+    try:
+        locale.setlocale(locale.LC_TIME, "pt_BR")
+    except locale.Error:
+        pass
+
+# 1) Injeta script para definir idioma como pt-BR e evitar prompt de tradução
 st.markdown(
     """
-    <script>
-      document.documentElement.lang = 'pt-BR';
-    </script>
+    <script>document.documentElement.lang = 'pt-BR';</script>
     """,
     unsafe_allow_html=True,
 )
 
-# 1) Configuração da página
+# 2) Configuração da página
 st.set_page_config(
     page_title="Recebimentos de Marketplaces",
     layout="wide",
     initial_sidebar_state="expanded"
 )
 
-# Título e subtítulo
+# 3) Título principal e subtítulo
 st.markdown(
     "<h1 style='margin-bottom:0.1rem;'>📊 Recebimentos de Marketplaces</h1>"
     "<h3 style='margin-top:0;'>Visualize e gerencie suas receitas</h3>",
     unsafe_allow_html=True
 )
 
-# --- 2) Conexão com Google Sheets ---
+# --- 4) Conexão com Google Sheets ---
 SHEET_KEY = "19UwqUZlIZJ_kZVf1hTZw1_Nds2nYnu6Hx8igOQVsDfk"
 SCOPES    = ["https://www.googleapis.com/auth/spreadsheets",
              "https://www.googleapis.com/auth/drive"]
 creds     = Credentials.from_service_account_info(
     st.secrets["google_service_account"], scopes=SCOPES
 )
-gc        = gspread.authorize(creds)
-ws        = gc.open_by_key(SHEET_KEY).worksheet("Dados")
-header    = ws.row_values(1)
-col_idx_dt_baixa = header.index("Data da Baixa") + 1
-col_idx_baixado  = header.index("Baixado por")   + 1
+gc   = gspread.authorize(creds)
+ws   = gc.open_by_key(SHEET_KEY).worksheet("Dados")
+hdr  = ws.row_values(1)
+col_idx_dt_baixa = hdr.index("Data da Baixa") + 1
+col_idx_baixado  = hdr.index("Baixado por")   + 1
 
-# --- 3) Parser robusto para Valor ---
+# --- 5) Parser robusto para Valor ---
 def parse_val(v):
     s = str(v).strip()
-    if not s or s.lower() == "nan":
-        return 0.0
-    if isinstance(v, (int, float)):
-        return float(v)
-    if "," in s:
-        s = s.replace(".", "").replace(",", ".")
-    else:
-        s = s.replace(",", "")
-    try:
-        return float(s)
-    except:
-        return 0.0
+    if not s or s.lower()=="nan": return 0.0
+    if isinstance(v,(int,float)): return float(v)
+    if "," in s: s = s.replace(".","").replace(",",".")
+    else:        s = s.replace(",","")
+    try: return float(s)
+    except: return 0.0
 
-# --- 4) Carrega e trata os dados (cache) ---
+# --- 6) Carrega e trata os dados (cache) ---
 @st.cache_data
 def load_data():
     vals   = ws.get_all_values()
@@ -80,7 +82,7 @@ def load_data():
 
 df = load_data()
 
-# --- 5) CSS para KPI cards coloridos ---
+# --- 7) CSS para KPI cards coloridos ---
 st.markdown("""
 <style>
 .kpi-card {
@@ -90,7 +92,6 @@ st.markdown("""
   box-shadow: 0 2px 6px rgba(0,0,0,0.1);
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   text-align: center;
-  width: 100%;
 }
 .kpi-card:hover {
   transform: translateY(-4px);
@@ -98,31 +99,47 @@ st.markdown("""
 }
 .kpi-label { font-size: 0.9rem; color: #555; margin-bottom: 0.4rem; }
 .kpi-value { font-size: 1.6rem; font-weight: 600; color: #111; }
-/* contornos coloridos */
 .kpi-total  { border: 2px solid #1E90FF !important; }
 .kpi-count  { border: 2px solid #2ECC71 !important; }
 .kpi-ticket { border: 2px solid #9B59B6 !important; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 6) Sidebar com filtros em expanders ---
+# --- 8) Sidebar com filtros em expanders ---
 with st.sidebar:
     st.header("Filtros")
+
     with st.expander("📅 Período de Recebimento", expanded=True):
         min_date = df["Data"].min().date()
         max_date = df["Data"].max().date()
-        data_start = st.date_input("Data Início", min_value=min_date, max_value=max_date, value=min_date)
-        data_end   = st.date_input("Data Fim",    min_value=min_date, max_value=max_date, value=max_date)
+        data_start = st.date_input(
+            "Data Início",
+            min_value=min_date,
+            max_value=max_date,
+            value=min_date,
+            format="DD/MM/YYYY"
+        )
+        data_end = st.date_input(
+            "Data Fim",
+            min_value=min_date,
+            max_value=max_date,
+            value=max_date,
+            format="DD/MM/YYYY"
+        )
+
     with st.expander("🔍 Status de Baixa", expanded=True):
         status = st.radio("Status", ["Todos", "Baixados", "Pendentes"])
+
     with st.expander("🛒 Marketplaces"):
         mp_sel = st.multiselect("Selecione", sorted(df["Marketplace"].unique()))
+
     with st.expander("🏦 Contas"):
         conta_sel = st.multiselect("Selecione", sorted(df["Banco / Conta"].unique()))
+
     with st.expander("✅ Baixado por"):
         baixado_sel = st.multiselect("Selecione", sorted(df["Baixado por"].unique()))
 
-# --- 7) Aplica filtros ---
+# --- 9) Aplica filtros ---
 df_f = df[
     (df["Data"].dt.date >= data_start) &
     (df["Data"].dt.date <= data_end)
@@ -138,7 +155,7 @@ if conta_sel:
 if baixado_sel:
     df_f = df_f[df_f["Baixado por"].isin(baixado_sel)]
 
-# --- 8) Exibe os KPI cards lado a lado ---
+# --- 10) Exibe os KPI cards lado a lado ---
 total, count = df_f["Valor_raw"].sum(), len(df_f)
 ticket = total / count if count else 0.0
 
@@ -146,31 +163,25 @@ col1, col2, col3 = st.columns(3, gap="large")
 with col1:
     txt = f"R$ {total:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     st.markdown(
-        f"<div class='kpi-card kpi-total'>"
-        f"<div class='kpi-label'>Total Recebido</div>"
-        f"<div class='kpi-value'>{txt}</div>"
-        f"</div>",
+        f"<div class='kpi-card kpi-total'><div class='kpi-label'>Total Recebido</div>"
+        f"<div class='kpi-value'>{txt}</div></div>",
         unsafe_allow_html=True
     )
 with col2:
     st.markdown(
-        f"<div class='kpi-card kpi-count'>"
-        f"<div class='kpi-label'>Lançamentos</div>"
-        f"<div class='kpi-value'>{count}</div>"
-        f"</div>",
+        f"<div class='kpi-card kpi-count'><div class='kpi-label'>Lançamentos</div>"
+        f"<div class='kpi-value'>{count}</div></div>",
         unsafe_allow_html=True
     )
 with col3:
     txt = f"R$ {ticket:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     st.markdown(
-        f"<div class='kpi-card kpi-ticket'>"
-        f"<div class='kpi-label'>Ticket Médio</div>"
-        f"<div class='kpi-value'>{txt}</div>"
-        f"</div>",
+        f"<div class='kpi-card kpi-ticket'><div class='kpi-label'>Ticket Médio</div>"
+        f"<div class='kpi-value'>{txt}</div></div>",
         unsafe_allow_html=True
     )
 
-# --- 9) Prepara e exibe a tabela com AgGrid ---
+# --- 11) Prepara e exibe a tabela com AgGrid ---
 df_t = df_f.copy()
 df_t["Data"]          = df_t["Data_str"]
 df_t["Data da Baixa"] = df_t["DataBaixa_str"]
@@ -192,7 +203,7 @@ grid = AgGrid(
     width="100%", theme="streamlit"
 )
 
-# --- 10) Auto‐save ao editar 'Baixado por' ---
+# --- 12) Auto‐save ao editar 'Baixado por' ---
 df_up = pd.DataFrame(grid["data"])
 for _, row in df_up.iterrows():
     idx     = int(row["_orig_index"])
