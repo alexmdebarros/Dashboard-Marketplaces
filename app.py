@@ -3,15 +3,9 @@ import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
-from st_aggrid import (
-    AgGrid,
-    GridOptionsBuilder,
-    GridUpdateMode,
-    DataReturnMode,
-    GridSelectionMode
-)
+from st_aggrid import AgGrid, GridOptionsBuilder
 
-# 0) Injeta locale flatpickr pt-BR
+# 0) Injeta locale pt-BR no datepicker
 st.markdown(
     """
     <script>document.documentElement.lang = 'pt-BR';</script>
@@ -25,33 +19,32 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# 1) Configurações da página
+# 1) Configuração da página
 st.set_page_config(
     page_title="Recebimentos de Marketplaces",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
 
 # 2) Cabeçalho
 st.markdown(
     "<h1>📊 Recebimentos de Marketplaces</h1>"
     "<h3 style='margin-top:0;'>Visualize e gerencie suas receitas</h3>",
-    unsafe_allow_html=True
+    unsafe_allow_html=True,
 )
 
 # 3) Conexão com Google Sheets
 SHEET_KEY = "19UwqUZlIZJ_kZVf1hTZw1_Nds2nYnu6Hx8igOQVsDfk"
 SCOPES    = [
     "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive"
+    "https://www.googleapis.com/auth/drive",
 ]
 creds = Credentials.from_service_account_info(
-    st.secrets["google_service_account"],
-    scopes=SCOPES
+    st.secrets["google_service_account"], scopes=SCOPES
 )
-gc     = gspread.authorize(creds)
-ws     = gc.open_by_key(SHEET_KEY).worksheet("Dados")
-header = ws.row_values(1)
+gc        = gspread.authorize(creds)
+ws        = gc.open_by_key(SHEET_KEY).worksheet("Dados")
+header    = ws.row_values(1)
 col_idx_dt = header.index("Data da Baixa") + 1
 col_idx_by = header.index("Baixado por")   + 1
 
@@ -121,16 +114,17 @@ c3.metric("🎯 Ticket Médio",    f"R$ {ticket:,.2f}")
 
 # 8) Tabela com seleção
 df_t = df_f.reset_index().rename(columns={"index":"_orig_index"})
-df_t["row_number"] = df_t["_orig_index"] + 2
-df_t["Data"]          = df_t["Data_str"]
-df_t["Data da Baixa"] = df_t["DataBaixa_str"]
-df_display = df_t[
-    ["row_number", "Data", "Marketplace", "Valor",
-     "Banco / Conta", "Baixado por", "Data da Baixa"]
-]
+df_t["row_number"]     = df_t["_orig_index"] + 2
+df_t["Data"]           = df_t["Data_str"]
+df_t["Data da Baixa"]  = df_t["DataBaixa_str"]
+df_display = df_t[[
+    "row_number",
+    "Data", "Marketplace", "Valor",
+    "Banco / Conta", "Baixado por", "Data da Baixa"
+]]
 
 gb = GridOptionsBuilder.from_dataframe(df_display)
-gb.configure_selection(selection_mode=GridSelectionMode.SINGLE, use_checkbox=True)
+gb.configure_selection(selection_mode="single", use_checkbox=True)
 gb.configure_default_column(resizable=True, wrapText=True, autoHeight=True)
 gb.configure_column("row_number", hide=True)
 grid_opts = gb.build()
@@ -138,8 +132,8 @@ grid_opts = gb.build()
 grid_resp = AgGrid(
     df_display,
     gridOptions=grid_opts,
-    update_mode=GridUpdateMode.NO_UPDATE,
-    data_return_mode=DataReturnMode.FILTERED_AND_SORTED,
+    update_mode="NO_UPDATE",
+    data_return_mode="FILTERED_AND_SORTED",
     fit_columns_on_grid_load=True,
     height=400,
     width="100%",
