@@ -3,9 +3,9 @@ import pandas as pd
 import gspread
 from google.oauth2.service_account import Credentials
 from datetime import datetime
-from st_aggrid import AgGrid, GridOptionsBuilder
+from st_aggrid import AgGrid, GridOptionsBuilder, GridUpdateMode
 
-# 0) Injeta locale pt-BR no datepicker
+# ─── 0) Injeta locale flatpickr pt-BR ─────────────────────────────────────────
 st.markdown(
     """
     <script>document.documentElement.lang = 'pt-BR';</script>
@@ -19,50 +19,48 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# 1) Configuração da página
+# ─── 1) Configurações da página ────────────────────────────────────────────────
 st.set_page_config(
     page_title="Recebimentos de Marketplaces",
     layout="wide",
-    initial_sidebar_state="expanded",
 )
 
-# 2) Cabeçalho
+# ─── 2) Cabeçalho ─────────────────────────────────────────────────────────────
 st.markdown(
     "<h1>📊 Recebimentos de Marketplaces</h1>"
     "<h3 style='margin-top:0;'>Visualize e gerencie suas receitas</h3>",
-    unsafe_allow_html=True,
+    unsafe_allow_html=True
 )
 
-# 3) Conexão com Google Sheets
+# ─── 3) Conexão com Google Sheets ────────────────────────────────────────────
 SHEET_KEY = "19UwqUZlIZJ_kZVf1hTZw1_Nds2nYnu6Hx8igOQVsDfk"
-SCOPES    = [
+SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
 ]
 creds = Credentials.from_service_account_info(
     st.secrets["google_service_account"], scopes=SCOPES
 )
-gc        = gspread.authorize(creds)
-ws        = gc.open_by_key(SHEET_KEY).worksheet("Dados")
-header    = ws.row_values(1)
+gc = gspread.authorize(creds)
+ws = gc.open_by_key(SHEET_KEY).worksheet("Dados")
+header = ws.row_values(1)
 col_idx_dt = header.index("Data da Baixa") + 1
-col_idx_by = header.index("Baixado por")   + 1
+col_idx_by = header.index("Baixado por") + 1
 
-# 4) Leitura e tratamento dos dados
+# ─── 4) Carrega e trata dados ─────────────────────────────────────────────────
 @st.cache_data
 def load_data():
-    vals   = ws.get_all_values()
-    df_raw = pd.DataFrame(vals[1:], columns=vals[0])
+    raw = pd.DataFrame(ws.get_all_values()[1:], columns=ws.get_all_values()[0])
     df = pd.DataFrame({
-        "Data":          pd.to_datetime(df_raw["Data"], dayfirst=True, errors="coerce"),
-        "Marketplace":   df_raw["Marketplace"],
-        "Valor_raw":     df_raw["Valor"]
-                            .str.replace(".", "", regex=False)
-                            .str.replace(",", ".", regex=False)
-                            .astype(float),
-        "Banco / Conta": df_raw["Banco / Conta"],
-        "Data da Baixa": pd.to_datetime(df_raw["Data da Baixa"], dayfirst=True, errors="coerce"),
-        "Baixado por":   df_raw["Baixado por"].fillna(""),
+        "Data":          pd.to_datetime(raw["Data"], dayfirst=True, errors="coerce"),
+        "Marketplace":   raw["Marketplace"],
+        "Valor_raw":     raw["Valor"]
+                             .str.replace(".", "", regex=False)
+                             .str.replace(",", ".", regex=False)
+                             .astype(float),
+        "Banco / Conta": raw["Banco / Conta"],
+        "Data da Baixa": pd.to_datetime(raw["Data da Baixa"], dayfirst=True, errors="coerce"),
+        "Baixado por":   raw["Baixado por"].fillna(""),
     })
     df["Valor"] = df["Valor_raw"].map(
         lambda x: f"R$ {x:,.2f}"
@@ -71,14 +69,14 @@ def load_data():
                   .replace("X", ".")
     )
     df["Data_str"]      = df["Data"].dt.strftime("%d/%m/%Y")
-    df["DataBaixa_str"] = df["Data da Baixa"] \
-                              .dt.strftime("%d/%m/%Y %H:%M:%S") \
+    df["DataBaixa_str"] = df["Data da Baixa"]\
+                              .dt.strftime("%d/%m/%Y %H:%M:%S")\
                               .fillna("")
     return df
 
 df = load_data()
 
-# 5) Filtros na sidebar
+# ─── 5) Filtros na sidebar ────────────────────────────────────────────────────
 with st.sidebar:
     st.header("Filtros")
     mn    = df["Data"].min().date()
@@ -90,7 +88,7 @@ with st.sidebar:
     conta_sel = st.multiselect("Banco / Conta", sorted(df["Banco / Conta"].unique()))
     by_sel    = st.multiselect("Baixado por",   sorted(df["Baixado por"].unique()))
 
-# 6) Aplica filtros
+# ─── 6) Aplica filtros ────────────────────────────────────────────────────────
 df_f = df[(df["Data"].dt.date >= start) & (df["Data"].dt.date <= end)]
 if status == "Baixados":
     df_f = df_f[df_f["Baixado por"] != ""]
@@ -103,7 +101,7 @@ if conta_sel:
 if by_sel:
     df_f = df_f[df_f["Baixado por"].isin(by_sel)]
 
-# 7) KPIs
+# ─── 7) Exibe KPIs ───────────────────────────────────────────────────────────
 total  = df_f["Valor_raw"].sum()
 count  = len(df_f)
 ticket = total / count if count else 0.0
@@ -112,51 +110,44 @@ c1.metric("💰 Total Recebido", f"R$ {total:,.2f}")
 c2.metric("📝 Lançamentos",    f"{count}")
 c3.metric("🎯 Ticket Médio",    f"R$ {ticket:,.2f}")
 
-# 8) Tabela com seleção
+# ─── 8) Prepara tabela editável ─────────────────────────────────────────────
 df_t = df_f.reset_index().rename(columns={"index":"_orig_index"})
 df_t["row_number"]     = df_t["_orig_index"] + 2
 df_t["Data"]           = df_t["Data_str"]
 df_t["Data da Baixa"]  = df_t["DataBaixa_str"]
-df_display = df_t[[
-    "row_number",
-    "Data", "Marketplace", "Valor",
-    "Banco / Conta", "Baixado por", "Data da Baixa"
+grid_df = df_t[[
+    "row_number","Data","Marketplace","Valor",
+    "Banco / Conta","Baixado por","Data da Baixa"
 ]]
 
-gb = GridOptionsBuilder.from_dataframe(df_display)
-gb.configure_selection(selection_mode="single", use_checkbox=True)
+gb = GridOptionsBuilder.from_dataframe(grid_df)
 gb.configure_default_column(resizable=True, wrapText=True, autoHeight=True)
+gb.configure_column("Baixado por", editable=True)
 gb.configure_column("row_number", hide=True)
 grid_opts = gb.build()
 
 grid_resp = AgGrid(
-    df_display,
+    grid_df,
     gridOptions=grid_opts,
-    update_mode="NO_UPDATE",
-    data_return_mode="FILTERED_AND_SORTED",
+    update_mode=GridUpdateMode.VALUE_CHANGED,
     fit_columns_on_grid_load=True,
     height=400,
     width="100%",
-    theme="streamlit"
+    theme="streamlit",
 )
 
-# 9) Formulário de edição
-selected = grid_resp["selected_rows"]
-if selected:
-    sel = selected[0]
-    rn  = int(sel["row_number"])
-    st.markdown("### ✏️ Editar lançamento selecionado")
-    colA, colB = st.columns([2, 1])
-    with colA:
-        st.write(f"**Data:** {sel['Data']}")
-        st.write(f"**Marketplace:** {sel['Marketplace']}")
-        st.write(f"**Valor:** {sel['Valor']}")
-        st.write(f"**Banco / Conta:** {sel['Banco / Conta']}")
-        novo = st.text_input("Baixado por", value=sel["Baixado por"])
-    with colB:
-        if st.button("💾 Salvar alterações"):
-            ws.update_cell(rn, col_idx_by, novo)
-            ts = datetime.now().strftime("%d/%m/%Y %H:%M:%S") if novo else ""
-            ws.update_cell(rn, col_idx_dt, ts)
-            st.success("Salvo com sucesso!")
-            st.experimental_rerun()
+# ─── 9) Botão Salvar alterações ─────────────────────────────────────────────
+if st.button("💾 Salvar alterações"):
+    updated = pd.DataFrame(grid_resp["data"])
+    for _, row in updated.iterrows():
+        rn = int(row["row_number"])
+        new_usr  = row["Baixado por"] or ""
+        orig_usr = df.loc[rn-2, "Baixado por"]
+        if new_usr != orig_usr:
+            ws.update_cell(rn, col_idx_by, new_usr)
+            if new_usr:
+                ws.update_cell(rn, col_idx_dt, datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+            else:
+                ws.update_cell(rn, col_idx_dt, "")
+    st.success("Alterações salvas com sucesso!")
+    st.experimental_rerun()
