@@ -116,15 +116,14 @@ df_t["row_number"]     = df_t["_orig_index"] + 2
 df_t["Data"]           = df_t["Data_str"]
 df_t["Data da Baixa"]  = df_t["DataBaixa_str"]
 
-# dataframe que vamos exibir
 grid_df = df_t[[
     "row_number", "Data", "Marketplace", "Valor",
     "Banco / Conta", "Baixado por", "Data da Baixa"
 ]]
 
-# mapa original de quem baixou, para detectar edição
+# Construímos um mapa original garantindo string
 orig_map = {
-    row["row_number"]: row["Baixado por"]
+    int(row["row_number"]): str(row.get("Baixado por") or "").strip()
     for row in grid_df.to_dict(orient="records")
 }
 
@@ -139,28 +138,27 @@ with col1:
     grid_resp = AgGrid(
         grid_df,
         gridOptions=grid_opts,
-        update_mode=GridUpdateMode.VALUE_CHANGED,  # detecta cada alteração de valor
+        update_mode=GridUpdateMode.VALUE_CHANGED,
         fit_columns_on_grid_load=True,
         height=400,
         width="100%",
         theme="streamlit",
     )
 
-# reconstruímos o mapa após edição
+# Reconstruímos o mapa atual também convertendo sempre para string
 curr_map = {
-    row["row_number"]: row["Baixado por"].strip()
+    int(row["row_number"]): str(row.get("Baixado por") or "").strip()
     for row in grid_resp["data"]
 }
 
-# se houver qualquer diferença, sinaliza edição
-edited = any(curr_map[rn] != orig_map[rn] for rn in orig_map)
+# Se qualquer valor mudou, mostramos o botão
+edited = any(curr_map[rn] != orig_map.get(rn, "") for rn in curr_map)
 
 with col2:
     if edited:
         if st.button("💾 Salvar alterações"):
-            # atualiza cada linha que mudou
             for rn, new_usr in curr_map.items():
-                old_usr = orig_map[rn]
+                old_usr = orig_map.get(rn, "")
                 if new_usr != old_usr:
                     ws.update_cell(rn, col_idx_by, new_usr)
                     if new_usr:
