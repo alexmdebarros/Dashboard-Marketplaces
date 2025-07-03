@@ -39,11 +39,11 @@ SCOPES    = ["https://www.googleapis.com/auth/spreadsheets",
 creds     = Credentials.from_service_account_info(
     st.secrets["google_service_account"], scopes=SCOPES
 )
-gc       = gspread.authorize(creds)
-ws       = gc.open_by_key(SHEET_KEY).worksheet("Dados")
-header   = ws.row_values(1)
-idx_dt   = header.index("Data da Baixa") + 1
-idx_by   = header.index("Baixado por")   + 1
+gc     = gspread.authorize(creds)
+ws     = gc.open_by_key(SHEET_KEY).worksheet("Dados")
+header = ws.row_values(1)
+idx_dt = header.index("Data da Baixa") + 1
+idx_by = header.index("Baixado por")   + 1
 
 # ─── 3) Parser de Valor e carga de dados ─────────────────────────────────────
 def parse_val(v):
@@ -74,8 +74,7 @@ def load_data():
         "Baixado por":   df_raw["Baixado por"].fillna(""),
     })
     df["Valor"] = df["Valor_raw"].map(
-        lambda x: f"R$ {x:,.2f}"
-                  .replace(",", "X").replace(".", ",").replace("X", ".")
+        lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     )
     df["Data_str"]      = df["Data"].dt.strftime("%d/%m/%Y")
     df["DataBaixa_str"] = df["Data da Baixa"]\
@@ -139,34 +138,25 @@ tick     = tot / cnt if cnt else 0.0
 col1, col2, col3 = st.columns(3, gap="large")
 with col1:
     disp = f"R$ {tot:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    st.markdown(
-        f"<div class='kpi-card kpi-total'><div class='kpi-label'>Total Recebido</div>"
-        f"<div class='kpi-value'>{disp}</div></div>",
-        unsafe_allow_html=True
-    )
+    st.markdown(f"<div class='kpi-card kpi-total'><div class='kpi-label'>Total Recebido</div>"
+                f"<div class='kpi-value'>{disp}</div></div>",
+                unsafe_allow_html=True)
 with col2:
-    st.markdown(
-        f"<div class='kpi-card kpi-count'><div class='kpi-label'>Lançamentos</div>"
-        f"<div class='kpi-value'>{cnt}</div></div>",
-        unsafe_allow_html=True
-    )
+    st.markdown(f"<div class='kpi-card kpi-count'><div class='kpi-label'>Lançamentos</div>"
+                f"<div class='kpi-value'>{cnt}</div></div>",
+                unsafe_allow_html=True)
 with col3:
     disp = f"R$ {tick:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    st.markdown(
-        f"<div class='kpi-card kpi-ticket'><div class='kpi-label'>Ticket Médio</div>"
-        f"<div class='kpi-value'>{disp}</div></div>",
-        unsafe_allow_html=True
-    )
+    st.markdown(f"<div class='kpi-card kpi-ticket'><div class='kpi-label'>Ticket Médio</div>"
+                f"<div class='kpi-value'>{disp}</div></div>",
+                unsafe_allow_html=True)
 
 # ─── 8) Prepara DataFrame para AgGrid com row_number ────────────────────────
 df_t = df_f.reset_index().rename(columns={"index":"_orig_index"})
 df_t["row_number"] = df_t["_orig_index"] + 2
 df_t["Data"]          = df_t["Data_str"]
 df_t["Data da Baixa"] = df_t["DataBaixa_str"]
-df_t = df_t[[
-    "row_number", "Data", "Marketplace", "Valor",
-    "Banco / Conta", "Baixado por", "Data da Baixa"
-]]
+df_t = df_t[["row_number","Data","Marketplace","Valor","Banco / Conta","Baixado por","Data da Baixa"]]
 
 gb = GridOptionsBuilder.from_dataframe(df_t)
 gb.configure_default_column(resizable=True, wrapText=True, autoHeight=True)
@@ -179,18 +169,17 @@ grid = AgGrid(
     height=600, fit_columns_on_grid_load=True, width="100%", theme="streamlit"
 )
 
-# ─── 9) Auto‐save usando row_number corrigido ─────────────────────────────────
-for row in grid["data"]:
-    raw_rn = row.get("row_number")
+# ─── 9) Auto‐save usando DataFrame iteration ─────────────────────────────────
+df_up = pd.DataFrame(grid["data"])
+for _, row in df_up.iterrows():
+    # converte row_number corretamente
+    rn_val = row["row_number"]
     try:
-        rn = int(float(raw_rn))
-    except (TypeError, ValueError):
-        continue
-
-    raw_usr = row.get("Baixado por")
-    new_usr = "" if pd.isna(raw_usr) or raw_usr is None else str(raw_usr).strip()
+        rn = int(rn_val)
+    except:
+        rn = int(float(rn_val))
+    new_usr = "" if pd.isna(row["Baixado por"]) else str(row["Baixado por"]).strip()
     orig_usr = df.loc[rn - 2, "Baixado por"]
-
     if new_usr != orig_usr:
         ws.update_cell(rn, idx_by, new_usr)
         if new_usr:
