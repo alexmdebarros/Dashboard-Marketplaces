@@ -16,26 +16,21 @@ authenticator = stauth.Authenticate(
     config["cookie"]["name"],
     config["cookie"]["key"],
     config["cookie"]["expiry_days"],
-    auto_hash=False  # senhas já pré-hashadas no config.yaml
+    auto_hash=False  # senhas já pré-hashadas em config.yaml
 )
 
-# Renderiza o formulário de login no corpo principal
-authenticator.login(location="main")
-# Recupera o status e usuário diretamente do session_state
-auth_status = st.session_state.get("authentication_status")
-name        = st.session_state.get("name")
-username    = st.session_state.get("username")
-
-if auth_status is False:
+# renderiza o formulário e devolve name, status, username
+name, status, username = authenticator.login("Login", "main")
+if status is False:
     st.error("Usuário ou senha incorretos")
     st.stop()
-elif auth_status is None:
+elif status is None:
     st.warning("Por favor, faça login")
     st.stop()
 
 st.sidebar.success(f"👋 Bem-vindo, {name}!")
 
-# ─── 2) Injeta locale pt-BR ────────────────────────────────────────────────
+# ─── 0) Injeta locale pt-BR ────────────────────────────────────────────────
 st.markdown(
     """
     <script>
@@ -61,11 +56,13 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# ─── 3) Configuração da página ────────────────────────────────────────────
+# ─── 1) Configuração da página ────────────────────────────────────────────
 st.set_page_config(page_title="Recebimentos de Marketplaces", layout="wide")
+
+# ─── 2) Título ────────────────────────────────────────────────────────────
 st.markdown("<h1>📊 Recebimentos de Marketplaces</h1>", unsafe_allow_html=True)
 
-# ─── 4) Conexão com o Google Sheets ───────────────────────────────────────
+# ─── 3) Conexão com o Google Sheets ───────────────────────────────────────
 SHEET_KEY = "19UwqUZlIZJ_kZVf1hTZw1_Nds2nYnu6Hx8igOQVsDfk"
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -80,7 +77,7 @@ header = ws.row_values(1)
 IDX_BY = header.index("Baixado por") + 1
 IDX_DT = header.index("Data da Baixa") + 1
 
-# ─── 5) Carregamento e tratamento dos dados ───────────────────────────────
+# ─── 4) Carregamento e tratamento dos dados ───────────────────────────────
 @st.cache_data
 def load_data():
     raw = pd.DataFrame(ws.get_all_values()[1:], columns=ws.get_all_values()[0])
@@ -104,19 +101,19 @@ def load_data():
 
 df = load_data()
 
-# ─── 6) Filtros na Sidebar ────────────────────────────────────────────────
+# ─── 5) Filtros na Sidebar ────────────────────────────────────────────────
 with st.sidebar:
     st.header("Filtros")
-    mn      = df["Data"].min().date()
-    mx      = df["Data"].max().date()
-    start   = st.date_input("Data Início", mn, min_value=mn, max_value=mx, format="DD/MM/YYYY")
-    end     = st.date_input("Data Fim",    mx, min_value=mn, max_value=mx, format="DD/MM/YYYY")
-    status  = st.radio("Status de Baixa", ["Todos", "Baixados", "Pendentes"])
-    mp_sel  = st.multiselect("Marketplace", sorted(df["Marketplace"].unique()))
+    mn = df["Data"].min().date()
+    mx = df["Data"].max().date()
+    start = st.date_input("Data Início", mn, min_value=mn, max_value=mx, format="DD/MM/YYYY")
+    end = st.date_input("Data Fim", mx, min_value=mn, max_value=mx, format="DD/MM/YYYY")
+    status = st.radio("Status de Baixa", ["Todos", "Baixados", "Pendentes"])
+    mp_sel = st.multiselect("Marketplace", sorted(df["Marketplace"].unique()))
     conta_sel = st.multiselect("Banco / Conta", sorted(df["Banco / Conta"].unique()))
-    by_sel  = st.multiselect("Baixado por",   sorted(df["Baixado por"].unique()))
+    by_sel = st.multiselect("Baixado por", sorted(df["Baixado por"].unique()))
 
-# ─── 7) Aplicação dos Filtros ─────────────────────────────────────────────
+# ─── 6) Aplicação dos Filtros ─────────────────────────────────────────────
 df_f = df[(df["Data"].dt.date >= start) & (df["Data"].dt.date <= end)]
 if status == "Baixados":
     df_f = df_f[df_f["Baixado por"] != ""]
@@ -129,22 +126,22 @@ if conta_sel:
 if by_sel:
     df_f = df_f[df_f["Baixado por"].isin(by_sel)]
 
-# ─── 8) KPI Cards ─────────────────────────────────────────────────────────
+# ─── 7) KPI Cards ─────────────────────────────────────────────────────────
 def fmt_ptbr(valor: float) -> str:
-    inteiro, dec = f"{valor:,.2f}".split('.')
+    s = f"{valor:,.2f}"
+    inteiro, dec = s.split('.')
     inteiro = inteiro.replace(',', '.')
     return f"{inteiro},{dec}"
 
 total = df_f["Valor_raw"].sum()
 count = len(df_f)
 ticket = total / count if count else 0.0
-
 c1, c2, c3 = st.columns(3, gap="large")
 c1.metric("💰 Total Recebido", f"R$ {fmt_ptbr(total)}")
-c2.metric("📝 Lançamentos",     f"{count}")
-c3.metric("🎯 Ticket Médio",      f"R$ {fmt_ptbr(ticket)}")
+c2.metric("📝 Lançamentos", f"{count}")
+c3.metric("🎯 Ticket Médio", f"R$ {fmt_ptbr(ticket)}")
 
-# ─── 9) Editor de dados ────────────────────────────────────────────────────
+# ─── 8) Editor de dados ────────────────────────────────────────────────────
 if hasattr(st, "data_editor"):
     data_editor = st.data_editor
 elif hasattr(st, "experimental_data_editor"):
@@ -155,12 +152,12 @@ else:
 
 df_edit = df_f.reset_index().rename(columns={"index": "_orig_index"})
 df_edit["row_number"] = df_edit["_orig_index"] + 2
-df_edit["Data"]       = df_edit["Data_str"]
+df_edit["Data"] = df_edit["Data_str"]
 df_edit["Data da Baixa"] = df_edit["DataBaixa_str"]
 
 display_df = df_edit[[
-    "row_number","Data","Marketplace","Valor",
-    "Banco / Conta","Baixado por","Data da Baixa"
+    "row_number", "Data", "Marketplace", "Valor",
+    "Banco / Conta", "Baixado por", "Data da Baixa"
 ]].set_index("row_number", drop=False)
 
 edited = data_editor(
@@ -178,25 +175,29 @@ edited = data_editor(
     }
 )
 
-# Mantém a coluna original
+# Protege coluna da baixa (não sobrescreve)
 edited["Data da Baixa"] = display_df["Data da Baixa"]
 
+# Detecta mudanças em 'Baixado por'
 mask = (
     edited["Baixado por"].fillna("").astype(str).str.strip()
     != display_df["Baixado por"].fillna("").astype(str).str.strip()
 )
 
-if mask.any() and st.button("💾 Salvar alterações"):
-    cells = []
-    now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-    for rn in edited.index[mask]:
-        new_usr = str(edited.at[rn, "Baixado por"]).strip()
-        cells.append(Cell(rn, IDX_BY, new_usr))
-        cells.append(Cell(rn, IDX_DT, "" if new_usr == "" else now))
-    ws.update_cells(cells)
-    st.success("✅ Alterações salvas com sucesso!")
-    load_data.clear()
-    st.rerun()
+if mask.any():
+    if st.button("💾 Salvar alterações"):
+        cells = []
+        now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        for rn in edited.index[mask]:
+            raw_value = edited.at[rn, "Baixado por"]
+            # volta a string vazia se usuário apagou o valor
+            new_usr = str(raw_value).strip() if pd.notna(raw_value) else ""
+            cells.append(Cell(rn, IDX_BY, new_usr))
+            cells.append(Cell(rn, IDX_DT, "" if new_usr == "" else now))
+        ws.update_cells(cells)
+        st.success("✅ Alterações salvas com sucesso!")
+        load_data.clear()
+        st.rerun()
 
-# ─── 10) LOGOUT ───────────────────────────────────────────────────────────
-authenticator.logout(location="sidebar")
+# ─── 9) LOGOUT ─────────────────────────────────────────────────────────────
+authenticator.logout("Logout", "sidebar")
