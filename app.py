@@ -142,7 +142,8 @@ if mask.any():
         cells = []
         now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
         for rn in edited.index[mask]:
-            new_usr = str(edited.at[rn, "Baixado por"]).strip()
+            raw_value = edited.at[rn, "Baixado por"]
+            new_usr = str(raw_value).strip() if pd.notna(raw_value) else ""
             cells.append(Cell(rn, IDX_BY, new_usr))
             cells.append(Cell(rn, IDX_DT, "" if new_usr == "" else now))
         ws.update_cells(cells)
