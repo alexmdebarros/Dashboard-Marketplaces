@@ -126,7 +126,13 @@ edited = data_editor(
     num_rows="fixed",
     use_container_width=True,
     column_config={
+        "Data": st.column_config.TextColumn("Data", disabled=True),
+        "Marketplace": st.column_config.TextColumn("Marketplace", disabled=True),
+        "Valor": st.column_config.TextColumn("Valor", disabled=True),
+        "Banco / Conta": st.column_config.TextColumn("Banco / Conta", disabled=True),
+        "Data da Baixa": st.column_config.TextColumn("Data da Baixa", disabled=True),
         "Baixado por": st.column_config.TextColumn("Baixado por", required=False, max_chars=50),
+        "row_number": st.column_config.TextColumn("row_number", disabled=True),
     }
 )
 
