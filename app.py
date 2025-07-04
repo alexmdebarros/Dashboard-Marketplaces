@@ -107,9 +107,9 @@ total  = df_f["Valor_raw"].sum()
 count  = len(df_f)
 ticket = total / count if count else 0.0
 c1, c2, c3 = st.columns(3, gap="large")
-c1.metric("💰 Total Recebido", f"R$ {total:,.2f}")
+c1.metric("💰 Total Recebido", f"R$ {total:..2f}")
 c2.metric("📝 Lançamentos",    f"{count}")
-c3.metric("🎯 Ticket Médio",    f"R$ {ticket:,.2f}")
+c3.metric("🎯 Ticket Médio",    f"R$ {ticket:..2f}")
 
 # ─── 8) Editor de dados com fallback ─────────────────────────────────────────
 if hasattr(st, "experimental_data_editor"):
