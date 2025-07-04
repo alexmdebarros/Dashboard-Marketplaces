@@ -6,21 +6,38 @@ from google.oauth2.service_account import Credentials
 from datetime import datetime
 
 # ─── 0) Injeta locale pt-BR ──────────────────────────────────────────────
-st.markdown("""
-    <script>document.documentElement.lang = 'pt-BR';</script>
+st.markdown(
+    """
+    <script>
+      // marca o HTML como português e não traduzível
+      document.documentElement.lang = 'pt-BR';
+      document.documentElement.setAttribute('translate', 'no');
+      // cria meta tags no <head>
+      var metaNotrans = document.createElement('meta');
+      metaNotrans.name = 'google';
+      metaNotrans.content = 'notranslate';
+      document.head.appendChild(metaNotrans);
+      var metaLang = document.createElement('meta');
+      metaLang.httpEquiv = 'Content-Language';
+      metaLang.content = 'pt-BR';
+      document.head.appendChild(metaLang);
+    </script>
+    <!-- flatpickr pt-BR -->
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
     <script>
       if (window.flatpickr) {
         window.flatpickr.localize(window.flatpickr.l10ns.pt);
       }
     </script>
-""", unsafe_allow_html=True)
+    """,
+    unsafe_allow_html=True
+)
 
 # ─── 1) Configuração da página ────────────────────────────────────────────
 st.set_page_config(page_title="Recebimentos de Marketplaces", layout="wide")
 
 # ─── 2) Título ────────────────────────────────────────────────────────────
-st.markdown("<h1>📊 Recebimentos de Marketplaces</h1><h3 style='margin-top:0;'>Visualize e gerencie suas receitas</h3>", unsafe_allow_html=True)
+st.markdown("<h1>📊 Recebimentos de Marketplaces</h1>", unsafe_allow_html=True)
 
 # ─── 3) Conexão com o Google Sheets ───────────────────────────────────────
 SHEET_KEY = "19UwqUZlIZJ_kZVf1hTZw1_Nds2nYnu6Hx8igOQVsDfk"
