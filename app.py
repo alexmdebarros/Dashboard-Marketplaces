@@ -7,8 +7,7 @@ from gspread import Cell
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 
-# ─── AUTENTICAÇÃO ─────────────────────────────────────────────────────────
-# Carrega configurações de auth
+# ─── 1) AUTENTICAÇÃO ───────────────────────────────────────────────────────
 with open("config.yaml") as f:
     config = yaml.safe_load(f)
 
@@ -17,10 +16,11 @@ authenticator = stauth.Authenticate(
     config["cookie"]["name"],
     config["cookie"]["key"],
     config["cookie"]["expiry_days"],
-    auto_hash=False  # senhas já vêm pré-hash em config.yaml
+    auto_hash=False  # senhas já pré-hashadas em config.yaml
 )
 
-name, status, username = authenticator.login("Login", "main")
+# Note que usamos keyword para location!
+name, status, username = authenticator.login("Login", location="main")
 if status is False:
     st.error("Usuário ou senha incorretos")
     st.stop()
@@ -29,9 +29,8 @@ elif status is None:
     st.stop()
 
 st.sidebar.success(f"Bem-vindo, {name}!")
-# ──────────────────────────────────────────────────────────────────────────
 
-# ─── 0) Injeta locale pt-BR ──────────────────────────────────────────────
+# ─── 2) Injeta locale pt-BR ───────────────────────────────────────────────
 st.markdown(
     """
     <script>
@@ -57,13 +56,11 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-# ─── 1) Configuração da página ────────────────────────────────────────────
+# ─── 3) Configuração da página ────────────────────────────────────────────
 st.set_page_config(page_title="Recebimentos de Marketplaces", layout="wide")
-
-# ─── 2) Título ────────────────────────────────────────────────────────────
 st.markdown("<h1>📊 Recebimentos de Marketplaces</h1>", unsafe_allow_html=True)
 
-# ─── 3) Conexão com o Google Sheets ───────────────────────────────────────
+# ─── 4) Conexão com Google Sheets ────────────────────────────────────────
 SHEET_KEY = "19UwqUZlIZJ_kZVf1hTZw1_Nds2nYnu6Hx8igOQVsDfk"
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -78,7 +75,7 @@ header = ws.row_values(1)
 IDX_BY = header.index("Baixado por") + 1
 IDX_DT = header.index("Data da Baixa") + 1
 
-# ─── 4) Carregamento e tratamento dos dados ───────────────────────────────
+# ─── 5) Carregamento e tratamento dos dados ───────────────────────────────
 @st.cache_data
 def load_data():
     raw = pd.DataFrame(ws.get_all_values()[1:], columns=ws.get_all_values()[0])
@@ -102,7 +99,7 @@ def load_data():
 
 df = load_data()
 
-# ─── 5) Filtros na Sidebar ────────────────────────────────────────────────
+# ─── 6) Filtros na Sidebar ────────────────────────────────────────────────
 with st.sidebar:
     st.header("Filtros")
     mn = df["Data"].min().date()
@@ -114,7 +111,7 @@ with st.sidebar:
     conta_sel = st.multiselect("Banco / Conta", sorted(df["Banco / Conta"].unique()))
     by_sel = st.multiselect("Baixado por", sorted(df["Baixado por"].unique()))
 
-# ─── 6) Aplicação dos Filtros ─────────────────────────────────────────────
+# ─── 7) Aplicação dos Filtros ─────────────────────────────────────────────
 df_f = df[(df["Data"].dt.date >= start) & (df["Data"].dt.date <= end)]
 if status == "Baixados":
     df_f = df_f[df_f["Baixado por"] != ""]
@@ -127,7 +124,7 @@ if conta_sel:
 if by_sel:
     df_f = df_f[df_f["Baixado por"].isin(by_sel)]
 
-# ─── 7) KPI Cards ─────────────────────────────────────────────────────────
+# ─── 8) KPI Cards ─────────────────────────────────────────────────────────
 def fmt_ptbr(valor: float) -> str:
     s = f"{valor:,.2f}"
     inteiro, dec = s.split('.')
@@ -142,7 +139,7 @@ c1.metric("💰 Total Recebido", f"R$ {fmt_ptbr(total)}")
 c2.metric("📝 Lançamentos", f"{count}")
 c3.metric("🎯 Ticket Médio", f"R$ {fmt_ptbr(ticket)}")
 
-# ─── 8) Editor de dados ────────────────────────────────────────────────────
+# ─── 9) Editor de dados ───────────────────────────────────────────────────
 if hasattr(st, "data_editor"):
     data_editor = st.data_editor
 elif hasattr(st, "experimental_data_editor"):
@@ -198,5 +195,5 @@ if mask.any():
         load_data.clear()
         st.rerun()
 
-# ─── LOGOUT ────────────────────────────────────────────────────────────────
-authenticator.logout("Logout", "sidebar")
+# ─── 10) LOGOUT ───────────────────────────────────────────────────────────
+authenticator.logout("Logout", location="sidebar")
