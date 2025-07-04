@@ -16,11 +16,11 @@ authenticator = stauth.Authenticate(
     config["cookie"]["name"],
     config["cookie"]["key"],
     config["cookie"]["expiry_days"],
-    auto_hash=False  # senhas já pré-hashadas em config.yaml
+    auto_hash=False  # usamos hashes já gerados no config.yaml
 )
 
-# Note que usamos keyword para location!
-name, status, username = authenticator.login("Login", location="main")
+# Note que agora só passamos location (ou nada, que usará 'main' por padrão)
+name, status, username = authenticator.login(location="main")
 if status is False:
     st.error("Usuário ou senha incorretos")
     st.stop()
@@ -30,7 +30,7 @@ elif status is None:
 
 st.sidebar.success(f"Bem-vindo, {name}!")
 
-# ─── 2) Injeta locale pt-BR ───────────────────────────────────────────────
+# ─── 2) Injeta locale pt-BR ────────────────────────────────────────────────
 st.markdown(
     """
     <script>
@@ -60,7 +60,7 @@ st.markdown(
 st.set_page_config(page_title="Recebimentos de Marketplaces", layout="wide")
 st.markdown("<h1>📊 Recebimentos de Marketplaces</h1>", unsafe_allow_html=True)
 
-# ─── 4) Conexão com Google Sheets ────────────────────────────────────────
+# ─── 4) Conexão com o Google Sheets ───────────────────────────────────────
 SHEET_KEY = "19UwqUZlIZJ_kZVf1hTZw1_Nds2nYnu6Hx8igOQVsDfk"
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -139,7 +139,7 @@ c1.metric("💰 Total Recebido", f"R$ {fmt_ptbr(total)}")
 c2.metric("📝 Lançamentos", f"{count}")
 c3.metric("🎯 Ticket Médio", f"R$ {fmt_ptbr(ticket)}")
 
-# ─── 9) Editor de dados ───────────────────────────────────────────────────
+# ─── 9) Editor de dados ────────────────────────────────────────────────────
 if hasattr(st, "data_editor"):
     data_editor = st.data_editor
 elif hasattr(st, "experimental_data_editor"):
@@ -196,4 +196,4 @@ if mask.any():
         st.rerun()
 
 # ─── 10) LOGOUT ───────────────────────────────────────────────────────────
-authenticator.logout("Logout", location="sidebar")
+authenticator.logout(location="sidebar")
