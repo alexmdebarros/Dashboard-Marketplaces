@@ -6,14 +6,13 @@ from google.oauth2.service_account import Credentials
 from datetime import datetime
 
 # ─── BLOQUEIO POR SENHA ────────────────────────────────────────────────────
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
+if "senha_valida" not in st.session_state:
+    st.session_state["senha_valida"] = False
 
-if not st.session_state.authenticated:
-    senha = st.sidebar.text_input("🔒 Senha de acesso", type="password")
+senha = st.sidebar.text_input("🔒 Senha de acesso", type="password")
+if not st.session_state["senha_valida"]:
     if senha == "fa@maringa":
-        st.session_state.authenticated = True
-        st.experimental_rerun()
+        st.session_state["senha_valida"] = True
     else:
         if senha:
             st.sidebar.error("Senha incorreta")
@@ -129,8 +128,8 @@ count = len(df_f)
 ticket = total / count if count else 0.0
 c1, c2, c3 = st.columns(3, gap="large")
 c1.metric("💰 Total Recebido", f"R$ {fmt_ptbr(total)}")
-c2.metric("📝 Lançamentos", f"{count}")
-c3.metric("🎯 Ticket Médio", f"R$ {fmt_ptbr(ticket)}")
+c2.metric("📝 Lançamentos",    f"{count}")
+c3.metric("🎯 Ticket Médio",     f"R$ {fmt_ptbr(ticket)}")
 
 # ─── 8) Editor de dados ────────────────────────────────────────────────────
 if hasattr(st, "data_editor"):
@@ -151,19 +150,18 @@ display_df = df_edit[[
     "Banco / Conta", "Baixado por", "Data da Baixa"
 ]].set_index("row_number", drop=False)
 
-# Editor com coluna Data da Baixa protegida via sobrescrita
 edited = data_editor(
     display_df,
     num_rows="fixed",
     use_container_width=True,
     column_config={
-        "Data": st.column_config.TextColumn("Data", disabled=True),
-        "Marketplace": st.column_config.TextColumn("Marketplace", disabled=True),
-        "Valor": st.column_config.TextColumn("Valor", disabled=True),
-        "Banco / Conta": st.column_config.TextColumn("Banco / Conta", disabled=True),
-        "Data da Baixa": st.column_config.TextColumn("Data da Baixa", disabled=True),
-        "Baixado por": st.column_config.TextColumn("Baixado por", required=False, max_chars=50),
-        "row_number": st.column_config.TextColumn("row_number", disabled=True),
+        "Data":           st.column_config.TextColumn("Data", disabled=True),
+        "Marketplace":    st.column_config.TextColumn("Marketplace", disabled=True),
+        "Valor":          st.column_config.TextColumn("Valor", disabled=True),
+        "Banco / Conta":  st.column_config.TextColumn("Banco / Conta", disabled=True),
+        "Data da Baixa":  st.column_config.TextColumn("Data da Baixa", disabled=True),
+        "Baixado por":    st.column_config.TextColumn("Baixado por", required=False, max_chars=50),
+        "row_number":     st.column_config.TextColumn("row_number", disabled=True),
     }
 )
 
@@ -171,8 +169,10 @@ edited = data_editor(
 edited["Data da Baixa"] = display_df["Data da Baixa"]
 
 # Detecta mudanças em 'Baixado por'
-mask = edited["Baixado por"].fillna("").astype(str).str.strip() != \
-       display_df["Baixado por"].fillna("").astype(str).str.strip()
+mask = (
+    edited["Baixado por"].fillna("").astype(str).str.strip()
+    != display_df["Baixado por"].fillna("").astype(str).str.strip()
+)
 
 if mask.any():
     if st.button("💾 Salvar alterações"):
