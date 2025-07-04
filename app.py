@@ -10,13 +10,14 @@ if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
 if not st.session_state.authenticated:
-    senha = st.sidebar.text_input("🔒 Senha de acesso", type="password")
-    if senha == "fa@maringa":
-        st.session_state.authenticated = True
-    elif senha:
-        st.sidebar.error("Senha incorreta")
-    if not st.session_state.authenticated:
-        st.stop()
+    with st.sidebar:
+        senha = st.text_input("🔒 Senha de acesso", type="password")
+        if senha == "fa@maringa":
+            st.session_state.authenticated = True
+            st.rerun()
+        elif senha:
+            st.error("Senha incorreta")
+    st.stop()
 
 # ─── 0) Injeta locale pt-BR ──────────────────────────────────────────────
 st.markdown(
