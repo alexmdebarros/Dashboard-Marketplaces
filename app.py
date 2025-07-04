@@ -5,6 +5,20 @@ from gspread import Cell
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 
+# ─── BLOQUEIO POR SENHA ────────────────────────────────────────────────────
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
+
+if not st.session_state.authenticated:
+    senha = st.sidebar.text_input("🔒 Senha de acesso", type="password")
+    if senha == "fa@maringa":
+        st.session_state.authenticated = True
+        st.experimental_rerun()
+    else:
+        if senha:
+            st.sidebar.error("Senha incorreta")
+        st.stop()
+
 # ─── 0) Injeta locale pt-BR ──────────────────────────────────────────────
 st.markdown(
     """
