@@ -4,7 +4,6 @@ import gspread
 from gspread import Cell
 from google.oauth2.service_account import Credentials
 from datetime import datetime
-from streamlit.runtime.scriptrunner import RerunException
 
 # ─── 0) Injeta locale pt-BR ──────────────────────────────────────────────
 st.markdown("""
@@ -121,7 +120,7 @@ display_df = df_edit[[
     "Banco / Conta", "Baixado por", "Data da Baixa"
 ]].set_index("row_number", drop=False)
 
-# Chama o editor com controle real de edição
+# Editor com coluna Data da Baixa protegida via sobrescrita
 edited = data_editor(
     display_df,
     num_rows="fixed",
@@ -131,7 +130,7 @@ edited = data_editor(
     }
 )
 
-# Impede qualquer alteração em 'Data da Baixa'
+# Protege coluna da baixa (impede que qualquer alteração seja salva)
 edited["Data da Baixa"] = display_df["Data da Baixa"]
 
 # Detecta mudanças em 'Baixado por'
@@ -149,4 +148,4 @@ if mask.any():
         ws.update_cells(cells)
         st.success("✅ Alterações salvas com sucesso!")
         load_data.clear()
-        raise RerunException()
+        st.rerun()
