@@ -1,34 +1,23 @@
 import streamlit as st
-import yaml
-import streamlit_authenticator as stauth
 import pandas as pd
 import gspread
 from gspread import Cell
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 
-# ─── 1) AUTENTICAÇÃO ───────────────────────────────────────────────────────
-with open("config.yaml") as f:
-    config = yaml.safe_load(f)
+# ─── BLOQUEIO POR SENHA ────────────────────────────────────────────────────
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
 
-authenticator = stauth.Authenticate(
-    config["credentials"],
-    config["cookie"]["name"],
-    config["cookie"]["key"],
-    config["cookie"]["expiry_days"],
-    auto_hash=False  # senhas já pré-hashadas em config.yaml
-)
-
-# renderiza o formulário e devolve name, status, username
-name, status, username = authenticator.login("Login", "main")
-if status is False:
-    st.error("Usuário ou senha incorretos")
-    st.stop()
-elif status is None:
-    st.warning("Por favor, faça login")
-    st.stop()
-
-st.sidebar.success(f"👋 Bem-vindo, {name}!")
+if not st.session_state.authenticated:
+    pwd = st.sidebar.text_input("🔒 Senha de acesso", type="password", key="pwd_input")
+    if pwd == "fa@maringa":
+        st.session_state.authenticated = True
+        st.experimental_rerun()
+    else:
+        if pwd:
+            st.sidebar.error("Senha incorreta")
+        st.stop()
 
 # ─── 0) Injeta locale pt-BR ────────────────────────────────────────────────
 st.markdown(
@@ -107,11 +96,11 @@ with st.sidebar:
     mn = df["Data"].min().date()
     mx = df["Data"].max().date()
     start = st.date_input("Data Início", mn, min_value=mn, max_value=mx, format="DD/MM/YYYY")
-    end = st.date_input("Data Fim", mx, min_value=mn, max_value=mx, format="DD/MM/YYYY")
-    status = st.radio("Status de Baixa", ["Todos", "Baixados", "Pendentes"])
-    mp_sel = st.multiselect("Marketplace", sorted(df["Marketplace"].unique()))
+    end = st.date_input("Data Fim",    mx, min_value=mn, max_value=mx, format="DD/MM/YYYY")
+    status  = st.radio("Status de Baixa", ["Todos", "Baixados", "Pendentes"])
+    mp_sel  = st.multiselect("Marketplace",   sorted(df["Marketplace"].unique()))
     conta_sel = st.multiselect("Banco / Conta", sorted(df["Banco / Conta"].unique()))
-    by_sel = st.multiselect("Baixado por", sorted(df["Baixado por"].unique()))
+    by_sel  = st.multiselect("Baixado por",     sorted(df["Baixado por"].unique()))
 
 # ─── 6) Aplicação dos Filtros ─────────────────────────────────────────────
 df_f = df[(df["Data"].dt.date >= start) & (df["Data"].dt.date <= end)]
@@ -138,8 +127,8 @@ count = len(df_f)
 ticket = total / count if count else 0.0
 c1, c2, c3 = st.columns(3, gap="large")
 c1.metric("💰 Total Recebido", f"R$ {fmt_ptbr(total)}")
-c2.metric("📝 Lançamentos", f"{count}")
-c3.metric("🎯 Ticket Médio", f"R$ {fmt_ptbr(ticket)}")
+c2.metric("📝 Lançamentos",     f"{count}")
+c3.metric("🎯 Ticket Médio",      f"R$ {fmt_ptbr(ticket)}")
 
 # ─── 8) Editor de dados ────────────────────────────────────────────────────
 if hasattr(st, "data_editor"):
@@ -152,12 +141,12 @@ else:
 
 df_edit = df_f.reset_index().rename(columns={"index": "_orig_index"})
 df_edit["row_number"] = df_edit["_orig_index"] + 2
-df_edit["Data"] = df_edit["Data_str"]
-df_edit["Data da Baixa"] = df_edit["DataBaixa_str"]
+df_edit["Data"]            = df_edit["Data_str"]
+df_edit["Data da Baixa"]   = df_edit["DataBaixa_str"]
 
 display_df = df_edit[[
-    "row_number", "Data", "Marketplace", "Valor",
-    "Banco / Conta", "Baixado por", "Data da Baixa"
+    "row_number","Data","Marketplace","Valor",
+    "Banco / Conta","Baixado por","Data da Baixa"
 ]].set_index("row_number", drop=False)
 
 edited = data_editor(
@@ -184,20 +173,15 @@ mask = (
     != display_df["Baixado por"].fillna("").astype(str).str.strip()
 )
 
-if mask.any():
-    if st.button("💾 Salvar alterações"):
-        cells = []
-        now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-        for rn in edited.index[mask]:
-            raw_value = edited.at[rn, "Baixado por"]
-            # volta a string vazia se usuário apagou o valor
-            new_usr = str(raw_value).strip() if pd.notna(raw_value) else ""
-            cells.append(Cell(rn, IDX_BY, new_usr))
-            cells.append(Cell(rn, IDX_DT, "" if new_usr == "" else now))
-        ws.update_cells(cells)
-        st.success("✅ Alterações salvas com sucesso!")
-        load_data.clear()
-        st.rerun()
-
-# ─── 9) LOGOUT ─────────────────────────────────────────────────────────────
-authenticator.logout("Logout", "sidebar")
+if mask.any() and st.button("💾 Salvar alterações"):
+    cells = []
+    now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    for rn in edited.index[mask]:
+        raw_value = edited.at[rn, "Baixado por"]
+        new_usr = str(raw_value).strip() if pd.notna(raw_value) else ""
+        cells.append(Cell(rn, IDX_BY, new_usr))
+        cells.append(Cell(rn, IDX_DT, "" if new_usr == "" else now))
+    ws.update_cells(cells)
+    st.success("✅ Alterações salvas com sucesso!")
+    load_data.clear()
+    st.rerun()
