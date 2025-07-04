@@ -10,20 +10,18 @@ if "authenticated" not in st.session_state:
     st.session_state.authenticated = False
 
 if not st.session_state.authenticated:
-    st.sidebar.header("🔒 Acesso Restrito")
-    pwd = st.sidebar.text_input("Senha de acesso", type="password")
-    if pwd == "fa@maringa":
+    senha = st.sidebar.text_input("🔒 Senha de acesso", type="password")
+    if senha == "fa@maringa":
         st.session_state.authenticated = True
-        st.experimental_rerun()     # força um rerun, agora authenticated=True
-    elif pwd:
+    elif senha:
         st.sidebar.error("Senha incorreta")
-    st.stop()                      # para o script enquanto não está autenticado
+    if not st.session_state.authenticated:
+        st.stop()
 
-# ─── 0) Injeta locale pt-BR ───────────────────────────────────────────────
+# ─── 0) Injeta locale pt-BR ──────────────────────────────────────────────
 st.markdown(
     """
     <script>
-      // marca o HTML como português e não traduzível
       document.documentElement.lang = 'pt-BR';
       document.documentElement.setAttribute('translate', 'no');
       var metaNotrans = document.createElement('meta');
@@ -155,13 +153,13 @@ edited = data_editor(
     num_rows="fixed",
     use_container_width=True,
     column_config={
-        "Data":           st.column_config.TextColumn("Data", disabled=True),
-        "Marketplace":    st.column_config.TextColumn("Marketplace", disabled=True),
-        "Valor":          st.column_config.TextColumn("Valor", disabled=True),
-        "Banco / Conta":  st.column_config.TextColumn("Banco / Conta", disabled=True),
-        "Data da Baixa":  st.column_config.TextColumn("Data da Baixa", disabled=True),
-        "Baixado por":    st.column_config.TextColumn("Baixado por", required=False, max_chars=50),
-        "row_number":     st.column_config.TextColumn("row_number", disabled=True),
+        "Data": st.column_config.TextColumn("Data", disabled=True),
+        "Marketplace": st.column_config.TextColumn("Marketplace", disabled=True),
+        "Valor": st.column_config.TextColumn("Valor", disabled=True),
+        "Banco / Conta": st.column_config.TextColumn("Banco / Conta", disabled=True),
+        "Data da Baixa": st.column_config.TextColumn("Data da Baixa", disabled=True),
+        "Baixado por": st.column_config.TextColumn("Baixado por", required=False, max_chars=50),
+        "row_number": st.column_config.TextColumn("row_number", disabled=True),
     }
 )
 
@@ -169,10 +167,8 @@ edited = data_editor(
 edited["Data da Baixa"] = display_df["Data da Baixa"]
 
 # Detecta mudanças em 'Baixado por'
-mask = (
-    edited["Baixado por"].fillna("").astype(str).str.strip()
-    != display_df["Baixado por"].fillna("").astype(str).str.strip()
-)
+mask = edited["Baixado por"].fillna("").astype(str).str.strip() != \
+       display_df["Baixado por"].fillna("").astype(str).str.strip()
 
 if mask.any():
     if st.button("💾 Salvar alterações"):
