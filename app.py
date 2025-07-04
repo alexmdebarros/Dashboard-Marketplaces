@@ -1,18 +1,42 @@
 import streamlit as st
+import yaml
+import streamlit_authenticator as stauth
 import pandas as pd
 import gspread
 from gspread import Cell
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 
+# ─── AUTENTICAÇÃO ─────────────────────────────────────────────────────────
+# Carrega configurações de auth
+with open("config.yaml") as f:
+    config = yaml.safe_load(f)
+
+authenticator = stauth.Authenticate(
+    config["credentials"],
+    config["cookie"]["name"],
+    config["cookie"]["key"],
+    config["cookie"]["expiry_days"],
+    auto_hash=False  # senhas já vêm pré-hash em config.yaml
+)
+
+name, status, username = authenticator.login("Login", "main")
+if status is False:
+    st.error("Usuário ou senha incorretos")
+    st.stop()
+elif status is None:
+    st.warning("Por favor, faça login")
+    st.stop()
+
+st.sidebar.success(f"Bem-vindo, {name}!")
+# ──────────────────────────────────────────────────────────────────────────
+
 # ─── 0) Injeta locale pt-BR ──────────────────────────────────────────────
 st.markdown(
     """
     <script>
-      // marca o HTML como português e não traduzível
       document.documentElement.lang = 'pt-BR';
       document.documentElement.setAttribute('translate', 'no');
-      // cria meta tags no <head>
       var metaNotrans = document.createElement('meta');
       metaNotrans.name = 'google';
       metaNotrans.content = 'notranslate';
@@ -137,7 +161,6 @@ display_df = df_edit[[
     "Banco / Conta", "Baixado por", "Data da Baixa"
 ]].set_index("row_number", drop=False)
 
-# Editor com coluna Data da Baixa protegida via sobrescrita
 edited = data_editor(
     display_df,
     num_rows="fixed",
@@ -153,12 +176,13 @@ edited = data_editor(
     }
 )
 
-# Protege coluna da baixa (impede que qualquer alteração seja salva)
+# Mantém "Data da Baixa" original
 edited["Data da Baixa"] = display_df["Data da Baixa"]
 
-# Detecta mudanças em 'Baixado por'
-mask = edited["Baixado por"].fillna("").astype(str).str.strip() != \
-       display_df["Baixado por"].fillna("").astype(str).str.strip()
+mask = (
+    edited["Baixado por"].fillna("").astype(str).str.strip()
+    != display_df["Baixado por"].fillna("").astype(str).str.strip()
+)
 
 if mask.any():
     if st.button("💾 Salvar alterações"):
@@ -173,3 +197,6 @@ if mask.any():
         st.success("✅ Alterações salvas com sucesso!")
         load_data.clear()
         st.rerun()
+
+# ─── LOGOUT ────────────────────────────────────────────────────────────────
+authenticator.logout("Logout", "sidebar")
