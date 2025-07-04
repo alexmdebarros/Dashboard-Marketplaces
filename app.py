@@ -6,26 +6,26 @@ from google.oauth2.service_account import Credentials
 from datetime import datetime
 
 # ─── BLOQUEIO POR SENHA ────────────────────────────────────────────────────
-if "senha_valida" not in st.session_state:
-    st.session_state["senha_valida"] = False
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
 
-senha = st.sidebar.text_input("🔒 Senha de acesso", type="password")
-if not st.session_state["senha_valida"]:
-    if senha == "fa@maringa":
-        st.session_state["senha_valida"] = True
-    else:
-        if senha:
-            st.sidebar.error("Senha incorreta")
-        st.stop()
+if not st.session_state.authenticated:
+    st.sidebar.header("🔒 Acesso Restrito")
+    pwd = st.sidebar.text_input("Senha de acesso", type="password")
+    if pwd == "fa@maringa":
+        st.session_state.authenticated = True
+        st.experimental_rerun()     # força um rerun, agora authenticated=True
+    elif pwd:
+        st.sidebar.error("Senha incorreta")
+    st.stop()                      # para o script enquanto não está autenticado
 
-# ─── 0) Injeta locale pt-BR ──────────────────────────────────────────────
+# ─── 0) Injeta locale pt-BR ───────────────────────────────────────────────
 st.markdown(
     """
     <script>
       // marca o HTML como português e não traduzível
       document.documentElement.lang = 'pt-BR';
       document.documentElement.setAttribute('translate', 'no');
-      // cria meta tags no <head>
       var metaNotrans = document.createElement('meta');
       metaNotrans.name = 'google';
       metaNotrans.content = 'notranslate';
@@ -128,8 +128,8 @@ count = len(df_f)
 ticket = total / count if count else 0.0
 c1, c2, c3 = st.columns(3, gap="large")
 c1.metric("💰 Total Recebido", f"R$ {fmt_ptbr(total)}")
-c2.metric("📝 Lançamentos",    f"{count}")
-c3.metric("🎯 Ticket Médio",     f"R$ {fmt_ptbr(ticket)}")
+c2.metric("📝 Lançamentos", f"{count}")
+c3.metric("🎯 Ticket Médio", f"R$ {fmt_ptbr(ticket)}")
 
 # ─── 8) Editor de dados ────────────────────────────────────────────────────
 if hasattr(st, "data_editor"):
