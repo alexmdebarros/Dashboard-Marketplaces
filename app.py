@@ -6,9 +6,8 @@ from google.oauth2.service_account import Credentials
 from datetime import datetime
 from streamlit.runtime.scriptrunner import RerunException
 
-# ─── 0) Injeta locale flatpickr pt-BR ─────────────────────────────────────────
-st.markdown(
-    """
+# ─── 0) Injeta locale pt-BR ──────────────────────────────────────────────
+st.markdown("""
     <script>document.documentElement.lang = 'pt-BR';</script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
     <script>
@@ -16,24 +15,15 @@ st.markdown(
         window.flatpickr.localize(window.flatpickr.l10ns.pt);
       }
     </script>
-    """,
-    unsafe_allow_html=True,
-)
+""", unsafe_allow_html=True)
 
-# ─── 1) Configurações da página ────────────────────────────────────────────────
-st.set_page_config(
-    page_title="Recebimentos de Marketplaces",
-    layout="wide",
-)
+# ─── 1) Configuração da página ────────────────────────────────────────────
+st.set_page_config(page_title="Recebimentos de Marketplaces", layout="wide")
 
-# ─── 2) Cabeçalho ─────────────────────────────────────────────────────────────
-st.markdown(
-    "<h1>📊 Recebimentos de Marketplaces</h1>"
-    "<h3 style='margin-top:0;'>Visualize e gerencie suas receitas</h3>",
-    unsafe_allow_html=True
-)
+# ─── 2) Título ────────────────────────────────────────────────────────────
+st.markdown("<h1>📊 Recebimentos de Marketplaces</h1><h3 style='margin-top:0;'>Visualize e gerencie suas receitas</h3>", unsafe_allow_html=True)
 
-# ─── 3) Conexão com Google Sheets ────────────────────────────────────────────
+# ─── 3) Conexão com o Google Sheets ───────────────────────────────────────
 SHEET_KEY = "19UwqUZlIZJ_kZVf1hTZw1_Nds2nYnu6Hx8igOQVsDfk"
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -48,7 +38,7 @@ header = ws.row_values(1)
 IDX_BY = header.index("Baixado por") + 1
 IDX_DT = header.index("Data da Baixa") + 1
 
-# ─── 4) Carrega e trata dados ─────────────────────────────────────────────────
+# ─── 4) Carregamento e tratamento dos dados ───────────────────────────────
 @st.cache_data
 def load_data():
     raw = pd.DataFrame(ws.get_all_values()[1:], columns=ws.get_all_values()[0])
@@ -64,32 +54,27 @@ def load_data():
         "Baixado por":   raw["Baixado por"].fillna(""),
     })
     df["Valor"] = df["Valor_raw"].map(
-        lambda x: f"R$ {x:,.2f}"
-                  .replace(",", "X")
-                  .replace(".", ",")
-                  .replace("X", ".")
+        lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     )
-    df["Data_str"]      = df["Data"].dt.strftime("%d/%m/%Y")
-    df["DataBaixa_str"] = df["Data da Baixa"]\
-                              .dt.strftime("%d/%m/%Y %H:%M:%S")\
-                              .fillna("")
+    df["Data_str"] = df["Data"].dt.strftime("%d/%m/%Y")
+    df["DataBaixa_str"] = df["Data da Baixa"].dt.strftime("%d/%m/%Y %H:%M:%S").fillna("")
     return df
 
 df = load_data()
 
-# ─── 5) Filtros na sidebar ────────────────────────────────────────────────────
+# ─── 5) Filtros na Sidebar ────────────────────────────────────────────────
 with st.sidebar:
     st.header("Filtros")
-    mn    = df["Data"].min().date()
-    mx    = df["Data"].max().date()
+    mn = df["Data"].min().date()
+    mx = df["Data"].max().date()
     start = st.date_input("Data Início", mn, min_value=mn, max_value=mx, format="DD/MM/YYYY")
-    end   = st.date_input("Data Fim",    mx, min_value=mn, max_value=mx, format="DD/MM/YYYY")
-    status    = st.radio("Status de Baixa", ["Todos", "Baixados", "Pendentes"])
-    mp_sel    = st.multiselect("Marketplace",   sorted(df["Marketplace"].unique()))
+    end = st.date_input("Data Fim", mx, min_value=mn, max_value=mx, format="DD/MM/YYYY")
+    status = st.radio("Status de Baixa", ["Todos", "Baixados", "Pendentes"])
+    mp_sel = st.multiselect("Marketplace", sorted(df["Marketplace"].unique()))
     conta_sel = st.multiselect("Banco / Conta", sorted(df["Banco / Conta"].unique()))
-    by_sel    = st.multiselect("Baixado por",   sorted(df["Baixado por"].unique()))
+    by_sel = st.multiselect("Baixado por", sorted(df["Baixado por"].unique()))
 
-# ─── 6) Aplica filtros ───────────────────────────────────────────────────────
+# ─── 6) Aplicação dos Filtros ─────────────────────────────────────────────
 df_f = df[(df["Data"].dt.date >= start) & (df["Data"].dt.date <= end)]
 if status == "Baixados":
     df_f = df_f[df_f["Baixado por"] != ""]
@@ -102,36 +87,34 @@ if conta_sel:
 if by_sel:
     df_f = df_f[df_f["Baixado por"].isin(by_sel)]
 
-# ─── Helper de formatação pt-BR ───────────────────────────────────────────────
+# ─── 7) KPI Cards ─────────────────────────────────────────────────────────
 def fmt_ptbr(valor: float) -> str:
-    """Formata float em string no padrão brasileiro: ‘.’ milhares e ‘,’ decimais."""
-    s = f"{valor:,.2f}"          # ex: '59,580,784.08'
-    inteiro, dec = s.split('.')  # ['59,580,784', '08']
-    inteiro = inteiro.replace(',', '.')  # '59.580.784'
-    return f"{inteiro},{dec}"     # '59.580.784,08'
+    s = f"{valor:,.2f}"
+    inteiro, dec = s.split('.')
+    inteiro = inteiro.replace(',', '.')
+    return f"{inteiro},{dec}"
 
-# ─── 7) Exibe KPIs ───────────────────────────────────────────────────────────
-total  = df_f["Valor_raw"].sum()
-count  = len(df_f)
+total = df_f["Valor_raw"].sum()
+count = len(df_f)
 ticket = total / count if count else 0.0
 c1, c2, c3 = st.columns(3, gap="large")
 c1.metric("💰 Total Recebido", f"R$ {fmt_ptbr(total)}")
-c2.metric("📝 Lançamentos",    f"{count}")
-c3.metric("🎯 Ticket Médio",    f"R$ {fmt_ptbr(ticket)}")
+c2.metric("📝 Lançamentos", f"{count}")
+c3.metric("🎯 Ticket Médio", f"R$ {fmt_ptbr(ticket)}")
 
-# ─── 8) Editor de dados com fallback ─────────────────────────────────────────
-if hasattr(st, "experimental_data_editor"):
-    data_editor = st.experimental_data_editor
-elif hasattr(st, "data_editor"):
+# ─── 8) Data Editor com controle de edição ───────────────────────────────
+if hasattr(st, "data_editor"):
     data_editor = st.data_editor
+elif hasattr(st, "experimental_data_editor"):
+    data_editor = st.experimental_data_editor
 else:
-    st.error("⚠️ Atualize seu Streamlit para usar o Data Editor (`pip install -U streamlit>=1.19.0`).")
+    st.error("⚠️ Atualize o Streamlit para usar o Editor.")
     st.stop()
 
 df_edit = df_f.reset_index().rename(columns={"index": "_orig_index"})
-df_edit["row_number"]     = df_edit["_orig_index"] + 2
-df_edit["Data"]           = df_edit["Data_str"]
-df_edit["Data da Baixa"]  = df_edit["DataBaixa_str"]
+df_edit["row_number"] = df_edit["_orig_index"] + 2
+df_edit["Data"] = df_edit["Data_str"]
+df_edit["Data da Baixa"] = df_edit["DataBaixa_str"]
 
 display_df = df_edit[[
     "row_number", "Data", "Marketplace", "Valor",
@@ -143,13 +126,15 @@ edited = data_editor(
     num_rows="fixed",
     use_container_width=True,
     column_config={
-        "Data da Baixa": st.column_config.TextColumn(
-            "Data da Baixa", disabled=True
-        )
+        "Data da Baixa": st.column_config.TextColumn("Data da Baixa", disabled=True),
+        "Baixado por": st.column_config.TextColumn("Baixado por", required=False, max_chars=50),
     }
 )
 
-mask = edited["Baixado por"] != display_df["Baixado por"]
+# ─── 9) Salvar alterações ────────────────────────────────────────────────
+mask = edited["Baixado por"].fillna("").astype(str).str.strip() != \
+       display_df["Baixado por"].fillna("").astype(str).str.strip()
+
 if mask.any():
     if st.button("💾 Salvar alterações"):
         cells = []
@@ -157,8 +142,8 @@ if mask.any():
         for rn in edited.index[mask]:
             new_usr = str(edited.at[rn, "Baixado por"]).strip()
             cells.append(Cell(rn, IDX_BY, new_usr))
-            cells.append(Cell(rn, IDX_DT, now if new_usr else ""))
+            cells.append(Cell(rn, IDX_DT, "" if new_usr == "" else now))
         ws.update_cells(cells)
-        st.success("Alterações salvas com sucesso!")
+        st.success("✅ Alterações salvas com sucesso!")
         load_data.clear()
         raise RerunException()
