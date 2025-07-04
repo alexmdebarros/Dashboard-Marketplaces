@@ -102,7 +102,7 @@ c1.metric("💰 Total Recebido", f"R$ {fmt_ptbr(total)}")
 c2.metric("📝 Lançamentos", f"{count}")
 c3.metric("🎯 Ticket Médio", f"R$ {fmt_ptbr(ticket)}")
 
-# ─── 8) Data Editor com controle de edição ───────────────────────────────
+# ─── 8) Editor de dados ────────────────────────────────────────────────────
 if hasattr(st, "data_editor"):
     data_editor = st.data_editor
 elif hasattr(st, "experimental_data_editor"):
@@ -121,17 +121,20 @@ display_df = df_edit[[
     "Banco / Conta", "Baixado por", "Data da Baixa"
 ]].set_index("row_number", drop=False)
 
+# Chama o editor com controle real de edição
 edited = data_editor(
     display_df,
     num_rows="fixed",
     use_container_width=True,
     column_config={
-        "Data da Baixa": st.column_config.TextColumn("Data da Baixa", disabled=True),
         "Baixado por": st.column_config.TextColumn("Baixado por", required=False, max_chars=50),
     }
 )
 
-# ─── 9) Salvar alterações ────────────────────────────────────────────────
+# Impede qualquer alteração em 'Data da Baixa'
+edited["Data da Baixa"] = display_df["Data da Baixa"]
+
+# Detecta mudanças em 'Baixado por'
 mask = edited["Baixado por"].fillna("").astype(str).str.strip() != \
        display_df["Baixado por"].fillna("").astype(str).str.strip()
 
