@@ -102,14 +102,22 @@ if conta_sel:
 if by_sel:
     df_f = df_f[df_f["Baixado por"].isin(by_sel)]
 
+# ─── Helper de formatação pt-BR ───────────────────────────────────────────────
+def fmt_ptbr(valor: float) -> str:
+    """Formata float em string no padrão brasileiro: ‘.’ milhares e ‘,’ decimais."""
+    s = f"{valor:,.2f}"          # ex: '59,580,784.08'
+    inteiro, dec = s.split('.')  # ['59,580,784', '08']
+    inteiro = inteiro.replace(',', '.')  # '59.580.784'
+    return f"{inteiro},{dec}"     # '59.580.784,08'
+
 # ─── 7) Exibe KPIs ───────────────────────────────────────────────────────────
 total  = df_f["Valor_raw"].sum()
 count  = len(df_f)
 ticket = total / count if count else 0.0
 c1, c2, c3 = st.columns(3, gap="large")
-c1.metric("💰 Total Recebido", f"R$ {total:,.2f}").replace(',', '.')
+c1.metric("💰 Total Recebido", f"R$ {fmt_ptbr(total)}")
 c2.metric("📝 Lançamentos",    f"{count}")
-c3.metric("🎯 Ticket Médio",    f"R$ {ticket:,.2f}")
+c3.metric("🎯 Ticket Médio",    f"R$ {fmt_ptbr(ticket)}")
 
 # ─── 8) Editor de dados com fallback ─────────────────────────────────────────
 if hasattr(st, "experimental_data_editor"):
