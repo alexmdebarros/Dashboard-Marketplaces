@@ -141,7 +141,12 @@ display_df = df_edit[[
 edited = data_editor(
     display_df,
     num_rows="fixed",
-    use_container_width=True
+    use_container_width=True,
+    column_config={
+        "Data da Baixa": st.column_config.TextColumn(
+            "Data da Baixa", disabled=True
+        )
+    }
 )
 
 mask = edited["Baixado por"] != display_df["Baixado por"]
