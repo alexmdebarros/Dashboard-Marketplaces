@@ -4,6 +4,7 @@ import gspread
 from gspread import Cell
 from google.oauth2.service_account import Credentials
 from datetime import datetime
+import pytz
 
 # ─── BLOQUEIO POR SENHA ────────────────────────────────────────────────────
 if "authenticated" not in st.session_state:
@@ -174,7 +175,8 @@ mask = edited["Baixado por"].fillna("").astype(str).str.strip() != \
 if mask.any():
     if st.button("💾 Salvar alterações"):
         cells = []
-        now = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        tz = pytz.timezone("America/Sao_Paulo")
+        now = datetime.now(tz).strftime("%d/%m/%Y %H:%M:%S")
         for rn in edited.index[mask]:
             raw_value = edited.at[rn, "Baixado por"]
             new_usr = str(raw_value).strip() if pd.notna(raw_value) else ""

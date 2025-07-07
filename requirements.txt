@@ -5,3 +5,4 @@ google-auth>=2.14.0
 streamlit-aggrid>=0.4.0
 streamlit-authenticator>=0.4.2
 PyYAML>=6.0.2
+pytz>=2023.3
