@@ -132,11 +132,15 @@ count = len(df_f)
 ticket = total / count if count else 0.0
 porcent_b = len(df_f[df_f["Baixado por"] != ""]) / len(df_f) * 100
 porcent_n = len(df_f[df_f["Baixado por"] == ""]) / len(df_f) * 100
-c1, c2, c3, c4 = st.columns(4, gap="large")
+baixados = df_f[df_f["Data da Baixa"].notna()]
+baixados["Dias para Baixa"] = (baixados["Data da Baixa"] - baixados["Data"]).dt.days
+media_dias = baixados["Dias para Baixa"].mean()
+c1, c2, c3, c4, c5 = st.columns(5, gap="large")
 c1.metric("💰 Total Recebido", f"R$ {fmt_ptbr(total)}")
 c2.metric("📝 Lançamentos", f"{count}")
-c3.metric("✅ Baixados(%)", f"{porcent_b:.2f}%")
-c4.metric("❌ Pendentes(%)", f"{porcent_n:.2f}%")
+c3.metric("✅ Baixados(%)", f"{porcent_b:.2f}%" if not pd.isna(porcent_b) else "-")
+c4.metric("❌ Pendentes(%)", f"{porcent_n:.2f}%" if not pd.isna(porcent_n) else "-")
+c5.metric("⏱️ Tempo Médio Baixa", f"{media_dias:.1f} dias" if not pd.isna(media_dias) else "-")
 
 # ─── 8) Editor de dados ────────────────────────────────────────────────────
 if hasattr(st, "data_editor"):
