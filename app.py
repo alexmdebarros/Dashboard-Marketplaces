@@ -135,7 +135,7 @@ porcent_n = len(df_f[df_f["Baixado por"] == ""]) / len(df_f) * 100
 baixados = df_f[df_f["Data da Baixa"].notna()]
 baixados["Dias para Baixa"] = (baixados["Data da Baixa"] - baixados["Data"]).dt.days
 media_dias = baixados["Dias para Baixa"].mean()
-c1, c2, c3, c4, c5 = st.columns(5, gap="large")
+c1, c2, c3, c4, c5 = st.columns(5, gap="small")
 c1.metric("💰 Total Recebido", f"R$ {fmt_ptbr(total)}")
 c2.metric("📝 Lançamentos", f"{count}")
 c3.metric("✅ Baixados(%)", f"{porcent_b:.2f}%" if not pd.isna(porcent_b) else "-")
