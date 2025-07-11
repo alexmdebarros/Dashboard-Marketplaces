@@ -130,10 +130,13 @@ def fmt_ptbr(valor: float) -> str:
 total = df_f["Valor_raw"].sum()
 count = len(df_f)
 ticket = total / count if count else 0.0
-c1, c2, c3 = st.columns(3, gap="large")
+porcent_b = len(df_f[df_f["Baixado por"] != ""]) / len(df_f) * 100
+porcent_n = len(df_f[df_f["Baixado por"] == ""]) / len(df_f) * 100
+c1, c2, c3, c4 = st.columns(5, gap="large")
 c1.metric("💰 Total Recebido", f"R$ {fmt_ptbr(total)}")
 c2.metric("📝 Lançamentos", f"{count}")
-c3.metric("🎯 Ticket Médio", f"R$ {fmt_ptbr(ticket)}")
+c3.metric("✅ Baixados(%)", f"{porcent_b:.2f}%")
+c4.metric("❌ Pendentes(%)", f"{porcent_n:.2f}%")
 
 # ─── 8) Editor de dados ────────────────────────────────────────────────────
 if hasattr(st, "data_editor"):
