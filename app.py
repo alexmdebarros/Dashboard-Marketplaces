@@ -67,6 +67,7 @@ header = ws.row_values(1)
 IDX_BY = header.index("Baixado por") + 1
 IDX_DT = header.index("Data da Baixa") + 1
 
+
 # ─── 4) Carregamento e tratamento dos dados ───────────────────────────────
 @st.cache_data
 def load_data():
@@ -93,6 +94,9 @@ df = load_data()
 
 # ─── 5) Filtros na Sidebar ────────────────────────────────────────────────
 with st.sidebar:
+    if st.button("🔄 Atualizar dados agora"):
+        load_data.clear()
+        st.rerun()
     st.header("Filtros")
     mn = df["Data"].min().date()
     mx = df["Data"].max().date()

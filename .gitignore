@@ -1,3 +1,5 @@
 creds.json
 /venv
 generate_hash.py
+dash.py
+dados_tratados.csv
