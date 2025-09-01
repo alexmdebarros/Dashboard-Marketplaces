@@ -53,7 +53,7 @@ st.set_page_config(page_title="Recebimentos de Marketplaces", layout="wide")
 st.markdown("<h1>📊 Recebimentos de Marketplaces</h1>", unsafe_allow_html=True)
 
 # ─── 3) Conexão com o Google Sheets ───────────────────────────────────────
-SHEET_KEY = "19UwqUZlIZJ_kZVf1hTZw1_Nds2nYnu6Hx8igOQVsDfk"
+SHEET_KEY = st.secrets["SHEETS_KEY"]
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
