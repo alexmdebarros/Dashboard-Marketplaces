@@ -5,20 +5,41 @@ from gspread import Cell
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 import pytz
+import streamlit_authenticator as stauth 
+import yaml                           
+from yaml.loader import SafeLoader      
 
-# ─── BLOQUEIO POR SENHA ────────────────────────────────────────────────────
-if "authenticated" not in st.session_state:
-    st.session_state.authenticated = False
 
-if not st.session_state.authenticated:
-    with st.sidebar:
-        senha = st.text_input("🔒 Senha de acesso", type="password")
-        if senha == "fa@maringa":
-            st.session_state.authenticated = True
-            st.rerun()
-        elif senha:
-            st.error("Senha incorreta")
+# ─── BLOQUEIO POR SENHA (SEGURO) ──────────────────────────────────────────
+import streamlit_authenticator as stauth
+import yaml
+from yaml.loader import SafeLoader
+
+with open('config.yaml') as file:
+    config = yaml.load(file, Loader=SafeLoader)
+
+authenticator = stauth.Authenticate(
+    config['credentials'],
+    config['cookie']['name'],
+    config['cookie']['key'],
+    config['cookie']['expiry_days'],
+)
+
+# Renderiza o formulário de login na sidebar
+with st.sidebar:
+    name, authentication_status, username = authenticator.login('Login', 'main')
+
+if st.session_state["authentication_status"] is False:
+    st.sidebar.error('Usuário/senha incorreto')
     st.stop()
+elif st.session_state["authentication_status"] is None:
+    st.warning('Por favor, insira seu usuário e senha')
+    st.stop()
+
+# Se o login for bem-sucedido, o app continua a carregar abaixo
+st.sidebar.write(f'Bem-vindo *{st.session_state["name"]}*')
+with st.sidebar:
+    authenticator.logout('Logout', 'main')
 
 # ─── 0) Injeta locale pt-BR ──────────────────────────────────────────────
 st.markdown(
