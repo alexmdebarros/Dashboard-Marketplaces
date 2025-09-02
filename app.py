@@ -5,6 +5,7 @@ from gspread import Cell
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 import pytz
+import json
 
 # ─── BLOQUEIO POR SENHA ────────────────────────────────────────────────────
 if "authenticated" not in st.session_state:
@@ -59,12 +60,20 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive",
 ]
 
-# 🔥 Ajuste híbrido: corrige chave privada independente do formato
+# Carrega secrets e força reformatar a chave
 creds_dict = dict(st.secrets["google_service_account"])
 if "private_key" in creds_dict:
-    creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n").strip()
+    key = creds_dict["private_key"]
+    # Garante que todas as quebras de linha fiquem no formato correto
+    key = key.replace("\\n", "\n").strip()
+    if not key.startswith("-----BEGIN PRIVATE KEY-----"):
+        key = "-----BEGIN PRIVATE KEY-----\n" + key
+    if not key.endswith("-----END PRIVATE KEY-----"):
+        key = key + "\n-----END PRIVATE KEY-----"
+    creds_dict["private_key"] = key
 
-creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
+creds = Credentials.from_service_account_info(json.loads(json.dumps(creds_dict)), scopes=SCOPES)
+
 
 gc = gspread.authorize(creds)
 try:
