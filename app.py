@@ -64,7 +64,7 @@ creds_dict = {
     "type": st.secrets.google_service_account.type,
     "project_id": st.secrets.google_service_account.project_id,
     "private_key_id": st.secrets.google_service_account.private_key_id,
-    "private_key": st.secrets.google_service_account.private_key,
+    "private_key": st.secrets.google_service_account.private_key.replace('\\n', '\n'),
     "client_email": st.secrets.google_service_account.client_email,
     "client_id": st.secrets.google_service_account.client_id,
     "auth_uri": st.secrets.google_service_account.auth_uri,
@@ -82,7 +82,7 @@ IDX_DT = header.index("Data da Baixa") + 1
 
 
 # ─── 4) Carregamento e tratamento dos dados ───────────────────────────────
-@st.cache_data(ttl=600) # Adicionado um TTL para o cache não ficar eterno
+@st.cache_data(ttl=600)
 def load_data():
     all_values = ws.get_all_values()
     header = all_values[0]
@@ -90,7 +90,6 @@ def load_data():
     
     raw = pd.DataFrame(data, columns=header)
     
-    # Tratamento robusto para colunas que podem não existir ou estarem vazias
     if "Data da Baixa" not in raw.columns:
         raw["Data da Baixa"] = None
     if "Baixado por" not in raw.columns:
@@ -111,7 +110,6 @@ def load_data():
         lambda x: f"R$ {x:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
     )
     df["Data_str"] = df["Data"].dt.strftime("%d/%m/%Y")
-    # Lidar com NaT (Not a Time) antes de formatar a string
     df["DataBaixa_str"] = df["Data da Baixa"].apply(lambda x: x.strftime("%d/%m/%Y %H:%M:%S") if pd.notnull(x) else "")
     return df
 
@@ -123,7 +121,6 @@ with st.sidebar:
         st.cache_data.clear()
         st.rerun()
     st.header("Filtros")
-    # Evitar erro se o dataframe estiver vazio
     if not df.empty and not df["Data"].dropna().empty:
         mn = df["Data"].min().date()
         mx = df["Data"].max().date()
@@ -171,7 +168,7 @@ else:
 
 baixados = df_f[df_f["Data da Baixa"].notna()]
 if not baixados.empty:
-    baixados = baixados.copy() # Evita SettingWithCopyWarning
+    baixados = baixados.copy() 
     baixados["Dias para Baixa"] = (baixados["Data da Baixa"] - baixados["Data"]).dt.days
     media_dias = baixados["Dias para Baixa"].mean()
 else:
@@ -206,7 +203,7 @@ edited = st.data_editor(
         "Banco / Conta": st.column_config.TextColumn("Banco / Conta", disabled=True),
         "Data da Baixa": st.column_config.TextColumn("Data da Baixa", disabled=True),
         "Baixado por": st.column_config.TextColumn("Baixado por", required=False, max_chars=50),
-        "row_number": None, # Oculta a coluna de número da linha
+        "row_number": None,
     }
 )
 
@@ -231,5 +228,5 @@ if mask.any():
         if cells:
             ws.update_cells(cells, value_input_option='USER_ENTERED')
             st.success("✅ Alterações salvas com sucesso!")
-            st.cache_data.clear() # Limpa o cache para recarregar os dados
+            st.cache_data.clear() 
             st.rerun()
