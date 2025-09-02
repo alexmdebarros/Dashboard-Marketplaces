@@ -57,9 +57,58 @@ SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
 ]
-creds = Credentials.from_service_account_info(
-    st.secrets["google_service_account"], scopes=SCOPES
-)
+
+SHEET_KEY = "19UwqUZlIZJ_kZVf1hTZw1_Nds2nYnu6Hx8igOQVsDfk"
+SCOPES = [
+    "https://www.googleapis.com/auth/spreadsheets",
+    "https://www.googleapis.com/auth/drive",
+]
+
+# ==================== INÍCIO DO TESTE DE EMERGÊNCIA ====================
+# AVISO: APAGUE ESTE BLOCO DEPOIS DO TESTE! NÃO DEIXE CREDENCIAIS NO CÓDIGO!
+
+creds_info = {
+    "type": "service_account",
+    "project_id": "dashboard-receb-marketplaces",
+    "private_key_id": "895def82184723e839915e52903074cbc8402b37",
+    "private_key": """-----BEGIN PRIVATE KEY-----
+    MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDFw8854N0f0P8i
+    zLsOxpEIDJoybh2E4nCOZtC2H3vviostdpeS3yMWAt3o2BrROopkx6jHBtAMzEL0
+    tynlUF4ZJlp3D3nQDPT4ifjLa4rVghi+4kTNZJgJ6PH8gXEDM5zImaxlhfpdudXq
+    lGtoPUDVdXS359xUyNR/sXCoEiBIvmFVBBKHZqvZvvMp9NNj5JAFsKKuJNBXMMU
+    7b3mWl8YteI6zg+y+uOzdmDxXEogp7JKq8igobMSefhYpqUKdQVPudEgZOL5wf3N
+    9fmuh7E0RBgNi4VWyTsnqjaoYu+iIgUnMgK1ZVBzO4IqkmDzXLk5/Df5Q3p8Jt5E
+    wo02PJyLAgMBAAECggEAEqTvq+q1nhLDguHfPrjconAht2BnOwhoCRzLT2gvdHlQ
+    vrP//TI5KhGSHyoEeTY2JuMl18GeKp61L0H3Wq2VeXSCsdfNKZ6XF7lWMcNNPuy5
+    bYGCcASsSr7h1WbUozMh9E18kcOsQ1rKPofIina/3n/oxY+/12RpmDI/xzCSR5k0
+    swEL+BRvFCI72Yw7+8kcQZ2+StUFKHpXC5AfpaFjrPiF2KC9NBzy5tkqKmz590JA
+    8T0waM94zkEudgXHJA16kmPLn9CvvtdtEOh0064FGeA3ZxZ2AN/j9ljsWpIJEcwD
+    t+zuZvEwXuA58v3aBn+KvuEcLPb2Q6QwdMLjEypXFQKBgQDtHj0/dbJ9wXi+KnIf
+    VOQJzIiL1z/7Mh0Q892N53zpEt9o9wz+pt2NCS2KAruu1yd6ldml1y4BQTc9fYk6
+    AUxjlNbFqCJjB8SL4VBVaTixeno0nqVCGKEOhkJpHP4q7bxDYg/uzzSoRwH4HUjA
+    B9YgWddWfRAq9fRce2LTWGU+TQKBgQDVg1YlVMTPKq3AVDgJuPs6sLubwWaSEor6
+    /q/NpDS6pLACgjER1zfAiZcg6Kes8u+lYefsjMGLVikn/BDWC843tLKw1As+uhvx
+    vAX3TID06nCQ3QQXZEfWMHYMQVBwb1LSKOEYe543WGOvVV7M+HiaZCNYcGghJ8Aa
+    iP3y1g4iNwKBgBzvDLA6r24S9qXVzhkupajgcWUG/gKr6coQx98x+RcDu4k2ZDqK
+    qAw2q3zkunwqOuIFeQp4iF+U0qXJNL6EPAsGtXJnAtMstnoPI1tYvJdDh7f2B9pZ
+    4QVBssbax9T7L3bVd3Y/iIBkMcRR5newPRuzeshN+HQVkRzb3YJGjgwdAoGAShnX
+    1wLxfxjHzp0sCavKfVcC9Y6Mo5uN4ohryUn5BuHLOEOo9hEkh0z5R3GXZ/20UEiH
+    bmB3d31CsV7ZFQBp5IlxDs+4y19Z/W6M/4PsqZOH167tEZU7HUoaXix411y7eLa5
+    UH7urTSe/CX7zdVaPfMNFU+FxCQAlvT+db32j8cCgYANUZeAQyeaNs07osa5jNuy
+    KYidO5sMc0HRQyNpN+ZsWl0EGrvM93MKfsIG2qaovKs6zugFHxGMnGRGYUwIYMc9
+    OaLw0r6WTVMqSlXrNyQ0GVaQfuV87GnZwXRAA6g28BRLJvLl0OauRv7xBoz+yoNv
+    uS4bSrv4YZDkjfgfCrj3IQ==
+    -----END PRIVATE KEY-----
+    """,
+    "client_email": "streamlit-dashboard@dashboard-receb-marketplaces.iam.gserviceaccount.com",
+    "client_id": "116139259994891481926",
+    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+    "token_uri": "https://oauth2.googleapis.com/token",
+    "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+    "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/streamlit-dashboard%40dashboard-receb-marketplaces.iam.gserviceaccount.com",
+    "universe_domain": "googleapis.com"
+}
+
 gc = gspread.authorize(creds)
 ws = gc.open_by_key(SHEET_KEY).worksheet("Dados")
 header = ws.row_values(1)
