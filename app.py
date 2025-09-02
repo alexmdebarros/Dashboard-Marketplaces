@@ -59,8 +59,9 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive",
 ]
 
-creds_dict = st.secrets["google_service_account"]
-creds = Credentials.from_service_account_info(dict(creds_dict), scopes=SCOPES)
+# 🔥 Aqui está o ajuste: secrets multilinha não precisa .replace()
+creds_dict = dict(st.secrets["google_service_account"])
+creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
 
 gc = gspread.authorize(creds)
 try:
@@ -183,7 +184,7 @@ edited = data_editor(
     }
 )
 
-# Protege coluna da baixa (não deixa sobrescrever acidentalmente)
+# Protege coluna da baixa
 edited["Data da Baixa"] = display_df["Data da Baixa"]
 
 # Detecta mudanças em 'Baixado por'
