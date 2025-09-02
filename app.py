@@ -60,13 +60,8 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive",
 ]
 
-creds_dict = st.secrets["google_service_account"].to_dict()
 
-# 2. Corrige a formatação da chave privada
-creds_dict['private_key'] = creds_dict['private_key'].replace('\\n', '\n')
-
-# 3. Cria as credenciais com a chave já corrigida
-creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
+creds = Credentials.from_service_account_file("creds.json", scopes=SCOPES)
 
 # 4. Autoriza a conexão
 gc = gspread.authorize(creds)
