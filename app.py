@@ -5,63 +5,44 @@ from gspread import Cell
 from google.oauth2.service_account import Credentials
 from datetime import datetime
 import pytz
-import streamlit_authenticator as stauth
-import yaml
-from yaml.loader import SafeLoader
 
 # --- 1) Configuração da página ---
 st.set_page_config(page_title="Recebimentos de Marketplaces", layout="wide")
 
-# --- 2) Autenticação (Login) ---
-with open('config.yaml') as file:
-    config = yaml.load(file, Loader=SafeLoader)
+# --- 2) Bloqueio por Senha Simples (como na sua versão original) ---
+if "authenticated" not in st.session_state:
+    st.session_state.authenticated = False
 
-authenticator = stauth.Authenticate(
-    config['credentials'],
-    config['cookie']['name'],
-    config['cookie']['key'],
-    config['cookie']['expiry_days'],
-)
-
-# Renderiza o formulário de login na página principal, ANTES de qualquer outra coisa.
-name, authentication_status, username = authenticator.login(location='main')
-
-if st.session_state["authentication_status"] is False:
-    st.error('Usuário ou senha incorreta.')
-    st.stop()
-elif st.session_state["authentication_status"] is None:
-    st.warning('Por favor, insira seu usuário e senha.')
+if not st.session_state.authenticated:
+    with st.sidebar:
+        st.header("Acesso Restrito")
+        senha = st.text_input("🔒 Senha de acesso", type="password")
+        # ATENÇÃO: Esta senha está visível no código.
+        # É funcional, mas menos seguro que o método anterior.
+        if senha == "fa@maringa":
+            st.session_state.authenticated = True
+            st.rerun()
+        elif senha:
+            st.error("Senha incorreta")
     st.stop()
 
-# --- O RESTO DO SEU APP SÓ VAI RODAR SE O LOGIN FOR BEM-SUCEDIDO ---
+# --- O RESTO DO APP SÓ RODA SE A SENHA ESTIVER CORRETA ---
 
-# --- 3) Barra Lateral com Logout e Filtros ---
+# --- 3) Barra Lateral Principal ---
 with st.sidebar:
-    st.write(f'Bem-vindo *{st.session_state["name"]}*')
-    # O botão de logout agora está corretamente na 'sidebar'.
-    authenticator.logout('Logout', 'sidebar')
+    st.success("Acesso liberado!")
     st.divider()
     if st.button("🔄 Atualizar dados agora"):
-        # Esta chamada a load_data() é segura porque a função será definida antes de ser usada.
+        # A função load_data() é definida abaixo, então esta chamada é segura.
         load_data.clear()
         st.rerun()
     st.header("Filtros")
 
-# --- 4) Injeta locale pt-BR (Opcional, mas mantido do seu original) ---
-st.markdown(
-    """
-    <script>
-      document.documentElement.lang = 'pt-BR';
-    </script>
-    """,
-    unsafe_allow_html=True
-)
 
-# --- 5) Título ---
+# --- 4) Título ---
 st.markdown("<h1>📊 Recebimentos de Marketplaces</h1>", unsafe_allow_html=True)
 
-# --- 6) Conexão com o Google Sheets ---
-# ATENÇÃO: Esta parte usa st.secrets. Você precisará configurar isso no Streamlit Cloud.
+# --- 5) Conexão com o Google Sheets (via st.secrets) ---
 try:
     creds = Credentials.from_service_account_info(
         st.secrets["google_service_account"],
@@ -81,7 +62,7 @@ except Exception as e:
     st.stop()
 
 
-# --- 7) Carregamento e tratamento dos dados ---
+# --- 6) Carregamento e tratamento dos dados ---
 @st.cache_data
 def load_data():
     raw = pd.DataFrame(ws.get_all_values()[1:], columns=ws.get_all_values()[0])
@@ -103,7 +84,7 @@ def load_data():
 
 df = load_data()
 
-# Adiciona o resto dos filtros na sidebar
+# --- 7) Adiciona o resto dos filtros na sidebar ---
 with st.sidebar:
     mn = df["Data"].min().date()
     mx = df["Data"].max().date()
@@ -134,7 +115,9 @@ if count > 0:
     porcent_n = len(df_f[df_f["Baixado por"] == ""]) / len(df_f) * 100
     baixados = df_f[df_f["Data da Baixa"].notna()]
     if not baixados.empty:
-        baixados["Dias para Baixa"] = (baixados["Data da Baixa"] - baixados["Data"]).dt.days
+        # Usar .copy() para evitar o SettingWithCopyWarning
+        baixados = baixados.copy()
+        baixados.loc[:, "Dias para Baixa"] = (baixados["Data da Baixa"] - baixados["Data"]).dt.days
         media_dias = baixados["Dias para Baixa"].mean()
     else:
         media_dias = None
