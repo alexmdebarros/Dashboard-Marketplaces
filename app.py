@@ -58,9 +58,15 @@ SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
 ]
-creds = Credentials.from_service_account_info(
-    st.secrets["google_service_account"], scopes=SCOPES
-)
+
+creds_dict = st.secrets["google_service_account"].to_dict()
+
+creds_dict['private_key'] = creds_dict['private_key'].replace('\\n', '\n')
+
+
+creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
+
+
 gc = gspread.authorize(creds)
 ws = gc.open_by_key(SHEET_KEY).worksheet("Dados")
 header = ws.row_values(1)
