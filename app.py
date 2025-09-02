@@ -59,8 +59,11 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive",
 ]
 
-# 🔥 Aqui está o ajuste: secrets multilinha não precisa .replace()
+# 🔥 Ajuste híbrido: corrige chave privada independente do formato
 creds_dict = dict(st.secrets["google_service_account"])
+if "private_key" in creds_dict:
+    creds_dict["private_key"] = creds_dict["private_key"].replace("\\n", "\n").strip()
+
 creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
 
 gc = gspread.authorize(creds)
