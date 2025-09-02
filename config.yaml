@@ -1,1 +1,18 @@
+cookie:
+  name: "authtoken"
+  key:  "UM_STRING_BEM_LONGA_E_SECRETA"
+  expiry_days: 30
 
+credentials:
+  usernames:
+    marketplaces:
+      name: "Usuário Marketplaces"
+      password: "$2b$12$TwZKig5jsXz2VnOzRbLUxeRkOZRsZa3IOxgACdbY2C8a39qc3JjGW"
+
+# Não estamos usando registro dinâmico, mas poderia ficar assim:
+pre-authorized:  # opcional: e-mails autorizados para registro
+  emails:
+    - "contabil3@famaringa.com.br"
+    - "financeiro2@famaringa.com.br"
+    - "dados@famaringa.com.br"
+    - "aparecida@famaringa.com.br"
