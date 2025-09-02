@@ -60,22 +60,17 @@ SCOPES = [
     "https://www.googleapis.com/auth/drive",
 ]
 
-# Carrega secrets e força reformatar a chave
-creds_dict = dict(st.secrets["google_service_account"])
-if "private_key" in creds_dict:
-    key = creds_dict["private_key"]
-    # Garante que todas as quebras de linha fiquem no formato correto
-    key = key.replace("\\n", "\n").strip()
-    if not key.startswith("-----BEGIN PRIVATE KEY-----"):
-        key = "-----BEGIN PRIVATE KEY-----\n" + key
-    if not key.endswith("-----END PRIVATE KEY-----"):
-        key = key + "\n-----END PRIVATE KEY-----"
-    creds_dict["private_key"] = key
+creds_dict = st.secrets["google_service_account"].to_dict()
 
-creds = Credentials.from_service_account_info(json.loads(json.dumps(creds_dict)), scopes=SCOPES)
+# 2. Corrige a formatação da chave privada
+creds_dict['private_key'] = creds_dict['private_key'].replace('\\n', '\n')
 
+# 3. Cria as credenciais com a chave já corrigida
+creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
 
+# 4. Autoriza a conexão
 gc = gspread.authorize(creds)
+
 try:
     ws = gc.open_by_key(SHEET_KEY).worksheet("Dados")
 except Exception as e:
