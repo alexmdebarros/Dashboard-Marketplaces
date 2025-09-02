@@ -17,8 +17,6 @@ if not st.session_state.authenticated:
     with st.sidebar:
         st.header("Acesso Restrito")
         senha = st.text_input("🔒 Senha de acesso", type="password")
-        # ATENÇÃO: Esta senha está visível no código.
-        # É funcional, mas menos seguro que o método anterior.
         if senha == "fa@maringa":
             st.session_state.authenticated = True
             st.rerun()
@@ -39,8 +37,16 @@ with st.sidebar:
     st.header("Filtros")
 
 
-# --- 4) Título ---
+# --- 4) Título e Scripts Adicionais ---
 st.markdown("<h1>📊 Recebimentos de Marketplaces</h1>", unsafe_allow_html=True)
+st.markdown(
+    """
+    <script>
+      document.documentElement.lang = 'pt-BR';
+    </script>
+    """,
+    unsafe_allow_html=True
+)
 
 # --- 5) Conexão com o Google Sheets (via st.secrets) ---
 try:
